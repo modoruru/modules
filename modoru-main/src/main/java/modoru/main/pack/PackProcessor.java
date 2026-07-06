@@ -12,9 +12,7 @@ import su.hitori.pack.type.Translations;
 
 import java.io.File;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public final class PackProcessor {
 
