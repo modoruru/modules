@@ -13,7 +13,6 @@ import su.hitori.ux.chat.event.AsyncPreChatMessageEvent;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class StorageListener implements Listener {

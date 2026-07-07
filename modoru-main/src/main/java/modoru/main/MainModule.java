@@ -1,5 +1,6 @@
 package modoru.main;
 
+import modoru.main.chat.PrivateMessageCommand;
 import modoru.main.pack.PackProcessor;
 import modoru.main.storage.StorageListener;
 import modoru.main.storage.StorageClient;
@@ -34,10 +35,16 @@ public final class MainModule extends Module {
 
     @Override
     public void enable(EnableContext context) {
+        MainConfiguration configuration = new MainConfiguration(defaultConfig());
+        configuration.reload();
+
         packProcessor = new PackProcessor(this);
 
         context.listeners().register(
                 new StorageListener(storageReference)
+        );
+        context.commands().register(
+                new PrivateMessageCommand(storageReference)
         );
     }
 
