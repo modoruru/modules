@@ -48,12 +48,12 @@ public final class PrivateMessageCommand extends CommandAPICommand {
                     })
                     .thenAccept(pair -> {
                         if(pair == null) return;
-                        sendDirectMessageLocally(player, pair.first(), localReceiver, pair.second(), message);
+                        sendPrivateMessageLocally(player, pair.first(), localReceiver, pair.second(), message, null);
                     });
             return;
         }
 
-        storageClient.sendTransferDirectMessage(player, receiverName, formatPrivateMessageContent(message));
+        storageClient.sendTransferPrivateMessage(player, receiverName, formatPrivateMessageContent(message));
     }
 
     public static String formatPrivateMessageContent(String original) {
@@ -68,7 +68,7 @@ public final class PrivateMessageCommand extends CommandAPICommand {
         return builder.toString();
     }
 
-    public static void sendDirectMessageLocally(@Nullable Player sender, DataContainer senderContainer, @Nullable Player receiver, DataContainer receiverContainer, String content) {
+    public static void sendPrivateMessageLocally(@Nullable Player sender, DataContainer senderContainer, @Nullable Player receiver, DataContainer receiverContainer, String content, @Nullable Pair<String, Long> originalClientAndCreationTime) {
         Placeholder[] placeholders = new Placeholder[]{
                 Placeholder.create("receiver_name", receiverContainer.identifier()::gameName),
                 Placeholder.create("sender_name", senderContainer.identifier()::gameName),
@@ -78,7 +78,19 @@ public final class PrivateMessageCommand extends CommandAPICommand {
         var config = MainConfiguration.I.chat.directMessages;
 
         if(sender != null) sender.sendMessage(Text.create(Placeholders.resolve(config.senderFormat, placeholders)));
-        if(receiver != null) receiver.sendMessage(Text.create(Placeholders.resolve(config.receiverFormat, placeholders)));
+        if(receiver != null) {
+            if(originalClientAndCreationTime == null) {
+                receiver.sendMessage(Text.create(Placeholders.resolve(config.receiverFormat, placeholders)));
+                return;
+            }
+
+            receiver.sendMessage(Text.create(String.format(
+                    "<dark_gray><hover:show_text:'Message was delivered from <aqua>%s</aqua> in %sms\nSigned by modoru backend <green>✔</green>'>ℹ</dark_gray> %s",
+                    originalClientAndCreationTime.first(),
+                    System.currentTimeMillis() - originalClientAndCreationTime.second(),
+                    Placeholders.resolve(config.receiverFormat, placeholders)
+            )));
+        }
     }
 
 }

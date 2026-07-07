@@ -17,8 +17,6 @@ public final class MainConfiguration extends Configuration {
 
     public static final class Chat {
 
-        public String playerNotFound = "There's no player with username <yellow>%receiver_name%</yellow> online.";
-
         public DirectMessages directMessages = new DirectMessages();
 
         public static final class DirectMessages {

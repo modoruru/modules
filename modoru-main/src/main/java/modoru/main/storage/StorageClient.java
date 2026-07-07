@@ -1,7 +1,6 @@
 package modoru.main.storage;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
-import modoru.main.MainConfiguration;
 import modoru.main.chat.PrivateMessageCommand;
 import net.kyori.adventure.key.Key;
 import org.bukkit.Bukkit;
@@ -9,6 +8,7 @@ import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.json.JSONObject;
 import su.hitori.api.Hitori;
+import su.hitori.api.Pair;
 import su.hitori.api.logging.LoggerFactory;
 import su.hitori.api.module.ModuleInitializer;
 import su.hitori.api.util.Messages;
@@ -39,12 +39,12 @@ public final class StorageClient extends RemoteStorage {
     private static final Logger LOGGER = LoggerFactory.instance().create();
 
     private final Chat chat;
-    private final Map<UUID, TransferDirectMessageRequest> transferDirectMessageRequests; // request uuid - sender container
+    private final Map<UUID, TransferPrivateMessageRequest> transferPrivateMessageRequests; // request uuid - sender container
 
     public StorageClient(ScheduledExecutorService executorService, URI uri, String user, String password, Chat chat) {
         super(executorService, uri, user, password);
         this.chat = chat;
-        this.transferDirectMessageRequests = new HashMap<>();
+        this.transferPrivateMessageRequests = new HashMap<>();
         LOGGER.warning(((ModuleInitializer) RemoteStorage.class.getClassLoader()).getModuleMeta().key().asString());
     }
 
@@ -67,13 +67,13 @@ public final class StorageClient extends RemoteStorage {
         return client;
     }
 
-    public void sendTransferDirectMessage(Player sender, String receiverGameName, String message) {
+    public void sendTransferPrivateMessage(Player sender, String receiverGameName, String message) {
         long creationTime = System.currentTimeMillis();
         getUserDataContainer(sender).thenAccept(container -> {
             if(container == null) return;
 
             UUID requestUuid = UUID.randomUUID();
-            transferDirectMessageRequests.put(requestUuid, new TransferDirectMessageRequest(
+            transferPrivateMessageRequests.put(requestUuid, new TransferPrivateMessageRequest(
                     container,
                     receiverGameName,
                     message,
@@ -178,12 +178,13 @@ public final class StorageClient extends RemoteStorage {
                     return;
                 }
 
-                PrivateMessageCommand.sendDirectMessageLocally(
+                PrivateMessageCommand.sendPrivateMessageLocally(
                         null,
                         senderContainer,
                         receiverAsPlayer,
                         receiverContainer,
-                        message
+                        message,
+                        Pair.of(originalClient, creationTime)
                 );
 
                 clientSocket.send(
@@ -201,14 +202,14 @@ public final class StorageClient extends RemoteStorage {
                     return;
                 }
 
-                TransferDirectMessageRequest request = transferDirectMessageRequests.remove(requestUuid);
+                TransferPrivateMessageRequest request = transferPrivateMessageRequests.remove(requestUuid);
                 Player senderAsPlayer;
                 if(request == null || (senderAsPlayer = getPlayerByIdentifier(request.senderContainer().identifier())) == null) return;
 
                 if(!messageBody.optBoolean("success")) {
                     senderAsPlayer.sendMessage(Messages.ERROR.create(Placeholders.resolve(
-                            MainConfiguration.I.chat.playerNotFound,
-                            Placeholder.create("receiver_name", request::receiverName)
+                            UXConfiguration.I.chat.noSuchPlayer,
+                            Placeholder.create("player_name", request::receiverName)
                     )));
                     return;
                 }
@@ -227,12 +228,13 @@ public final class StorageClient extends RemoteStorage {
                         messageBody.optJSONObject("receiver_container")
                 );
 
-                PrivateMessageCommand.sendDirectMessageLocally(
+                PrivateMessageCommand.sendPrivateMessageLocally(
                         senderAsPlayer,
                         request.senderContainer(),
                         null,
                         receiverContainer,
-                        request.content()
+                        request.content(),
+                        null
                 );
             }
             default -> {}
