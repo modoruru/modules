@@ -69,26 +69,30 @@ public final class PrivateMessageCommand extends CommandAPICommand {
     }
 
     public static void sendPrivateMessageLocally(@Nullable Player sender, DataContainer senderContainer, @Nullable Player receiver, DataContainer receiverContainer, String content, @Nullable Pair<String, Long> originalClientAndCreationTime) {
+        long receive = System.currentTimeMillis();
         Placeholder[] placeholders = new Placeholder[]{
                 Placeholder.create("receiver_name", receiverContainer.identifier()::gameName),
                 Placeholder.create("sender_name", senderContainer.identifier()::gameName),
-                Placeholder.createFinal("message", formatPrivateMessageContent(content))
+                Placeholder.createFinal("message", formatPrivateMessageContent(content)),
+                Placeholder.create("original_client", () -> {
+                    if(originalClientAndCreationTime == null) return "";
+                    return originalClientAndCreationTime.first();
+                }),
+                Placeholder.create("delay", () -> {
+                    if(originalClientAndCreationTime == null) return "";
+                    return receive - originalClientAndCreationTime.second();
+                })
         };
 
         var config = MainConfiguration.I.chat.directMessages;
 
         if(sender != null) sender.sendMessage(Text.create(Placeholders.resolve(config.senderFormat, placeholders)));
         if(receiver != null) {
-            if(originalClientAndCreationTime == null) {
-                receiver.sendMessage(Text.create(Placeholders.resolve(config.receiverFormat, placeholders)));
-                return;
-            }
-
-            receiver.sendMessage(Text.create(String.format(
-                    "<dark_gray><hover:show_text:'Message was delivered from <aqua>%s</aqua> in %sms\nSigned by modoru backend <green>✔</green>'>ℹ</dark_gray> %s",
-                    originalClientAndCreationTime.first(),
-                    System.currentTimeMillis() - originalClientAndCreationTime.second(),
-                    Placeholders.resolve(config.receiverFormat, placeholders)
+            receiver.sendMessage(Text.create(Placeholders.resolve(
+                    originalClientAndCreationTime == null
+                            ? config.remoteReceiverFormat
+                            : config.receiverFormat,
+                    placeholders
             )));
         }
     }
