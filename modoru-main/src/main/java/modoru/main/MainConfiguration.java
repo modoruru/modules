@@ -14,9 +14,9 @@ public final class MainConfiguration extends Configuration {
     }
 
     public Chat chat = new Chat();
+    public StorageClient storageClient = new StorageClient();
 
     public static final class Chat {
-
         public DirectMessages directMessages = new DirectMessages();
 
         public static final class DirectMessages {
@@ -24,7 +24,12 @@ public final class MainConfiguration extends Configuration {
             public String receiverFormat = "<color:#479dff>[%sender_name% » I]:</color> <white><click:suggest_command:'/tell %sender_name% '>%message%</white>";
             public String senderFormat = "<color:#47ff8e>[I » %receiver_name%]:</color> <white><click:suggest_command:'/tell %receiver_name% '>%message%</white>";
         }
+    }
 
+    public static final class StorageClient {
+        public String address = "ws://localhost:80";
+        public String user = "root";
+        public String password = "root";
     }
 
 }

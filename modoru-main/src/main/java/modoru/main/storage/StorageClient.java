@@ -1,7 +1,9 @@
 package modoru.main.storage;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
+import modoru.main.MainConfiguration;
 import modoru.main.chat.PrivateMessageCommand;
+import modoru.main.data.DataFields;
 import net.kyori.adventure.key.Key;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
@@ -54,16 +56,20 @@ public final class StorageClient extends RemoteStorage {
                 .orElse(null);
         if(uxModule == null) return null;
 
-        var remoteImplementationConfig = UXConfiguration.I.storage.remoteImplementation;
+        var clientConfig = MainConfiguration.I.storageClient;
 
         StorageClient client = new StorageClient(
                 uxModule.executorService(),
-                URI.create(remoteImplementationConfig.address),
-                remoteImplementationConfig.user,
-                remoteImplementationConfig.password,
+                URI.create(clientConfig.address),
+                clientConfig.user,
+                clientConfig.password,
                 uxModule.chat()
         );
         uxModule.installStorage(client);
+
+        client.addFieldsToUserScheme(DataFields.userFields());
+        client.addFieldsToServerScheme(DataFields.serverFields());
+
         return client;
     }
 
