@@ -1,12 +1,13 @@
-package modoru.main.data;
+package modoru.main.data.user;
 
+import modoru.main.data.DataFields;
 import org.json.JSONObject;
 import su.hitori.ux.storage.DataContainer;
 import su.hitori.ux.storage.serialize.JSONCodec;
 
 public final class Subscription {
 
-    public static final JSONCodec<Subscription> CODEC = new JSONCodec<>(
+    public static final JSONCodec<Subscription> JSON_CODEC = new JSONCodec<>(
             subscription -> new JSONObject()
                     .put("when_obtained", subscription.whenObtained)
                     .put("length", subscription.length),

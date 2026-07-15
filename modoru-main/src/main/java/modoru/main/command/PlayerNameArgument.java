@@ -6,6 +6,7 @@ import dev.jorel.commandapi.CommandAPIBukkit;
 import dev.jorel.commandapi.arguments.Argument;
 import dev.jorel.commandapi.arguments.CommandAPIArgumentType;
 import dev.jorel.commandapi.executors.CommandArguments;
+import su.hitori.api.util.UnsafeUtil;
 
 import java.lang.reflect.Field;
 import java.util.Map;
@@ -13,7 +14,7 @@ import java.util.Map;
 /**
  * Player argument with suggestions on client
  */
-public class PlayerNameArgument extends Argument<String> {
+public final class PlayerNameArgument extends Argument<String> {
 
     public PlayerNameArgument(String nodeName) {
         super(nodeName, CommandAPIBukkit.get().getNMS()._ArgumentProfile());
@@ -34,11 +35,10 @@ public class PlayerNameArgument extends Argument<String> {
         try {
             Field argumentsField = cmdCtx.getClass().getDeclaredField("arguments");
             argumentsField.setAccessible(true);
-            Map<String, ParsedArgument<CSS, ?>> arguments = (Map<String, ParsedArgument<CSS, ?>>) argumentsField.get(cmdCtx);
+            Map<String, ParsedArgument<CSS, ?>> arguments = UnsafeUtil.cast(argumentsField.get(cmdCtx));
             final ParsedArgument<CSS, ?> argument = arguments.get(key);
-            if(argument == null) {
+            if(argument == null)
                 throw new IllegalArgumentException("No such argument '" + key + "' exists on this command");
-            }
 
             return argument.getRange().get(cmdCtx.getInput());
         }

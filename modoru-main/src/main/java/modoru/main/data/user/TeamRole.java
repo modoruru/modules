@@ -1,4 +1,4 @@
-package modoru.main.data;
+package modoru.main.data.user;
 
 public enum TeamRole {
 
