@@ -47,7 +47,6 @@ public final class StorageClient extends RemoteStorage {
         super(executorService, uri, user, password);
         this.chat = chat;
         this.transferPrivateMessageRequests = new HashMap<>();
-        LOGGER.warning(((ModuleInitializer) RemoteStorage.class.getClassLoader()).getModuleMeta().key().asString());
     }
 
     public static StorageClient create(Key uxModuleKey) {
