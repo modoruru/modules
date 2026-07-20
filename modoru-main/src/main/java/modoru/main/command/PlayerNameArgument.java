@@ -12,7 +12,8 @@ import java.lang.reflect.Field;
 import java.util.Map;
 
 /**
- * Player argument with suggestions on client
+ * Player argument with suggestions on client.
+ * Sends minecraft:game_profile argument type to client but on server represents just string.
  */
 public final class PlayerNameArgument extends Argument<String> {
 

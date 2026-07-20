@@ -22,16 +22,16 @@ subprojects  {
     apply(plugin = "io.papermc.paperweight.userdev")
 
     java {
-        toolchain.languageVersion.set(JavaLanguageVersion.of(properties["java"]!! as String))
+        toolchain.languageVersion.set(JavaLanguageVersion.of(property("java")!! as String))
     }
 
-    version = properties["version"]!!
+    version = property("version")!!
 
     dependencies {
-        compileOnly("io.papermc.paper:paper-api:26.1.2.build.+")
-        compileOnly("dev.jorel:commandapi-paper-core:11.0.0")
-        compileOnly("com.github.modoruru:hitori:${properties["hitori_version"]}")
-        compileOnly("com.github.modoruru:hitori-resourcepack:${properties["resourcepack_version"]}")
-        compileOnly("com.github.modoruru:hitori-ux:${properties["ux_version"]}")
+        compileOnly("io.papermc.paper:paper-api:${property("paper_version")}")
+        compileOnly("dev.jorel:commandapi-paper-core:${property("commandapi_version")}")
+        compileOnly("com.github.modoruru:hitori:${property("hitori_version")}")
+        compileOnly("com.github.modoruru:hitori-resourcepack:${property("resourcepack_version")}")
+        compileOnly("com.github.modoruru:hitori-ux:${property("ux_version")}")
     }
 }

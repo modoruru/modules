@@ -2,5 +2,5 @@ repositories {
 }
 
 dependencies {
-    paperweight.paperDevBundle("26.1.2.build.+")
+    paperweight.paperDevBundle(property("paper_version") as String)
 }

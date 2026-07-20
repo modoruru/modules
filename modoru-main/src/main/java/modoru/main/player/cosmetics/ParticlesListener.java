@@ -2,6 +2,7 @@ package modoru.main.player.cosmetics;
 
 import com.destroystokyo.paper.ParticleBuilder;
 import modoru.main.data.DataFields;
+import modoru.main.data.user.Subscription;
 import modoru.main.data.user.cosmetics.Particle;
 import modoru.main.storage.StorageClient;
 import org.bukkit.Bukkit;
@@ -47,6 +48,8 @@ public final class ParticlesListener implements Listener {
 
     private void tickPlayer(Player player, DataContainer container) {
         if(player.getGameMode() == GameMode.SPECTATOR || player.getPotionEffect(PotionEffectType.INVISIBILITY) != null) return;
+
+        if(!Subscription.active(container)) return;
 
         Particle particle = container.get(DataFields.CURRENT_PARTICLE);
         if(particle == null) return;
