@@ -56,9 +56,10 @@ public final class UsernameFormatter {
         else if(secondColor == null) return String.format("<color:#%s>%s</color>", ColorUtil.toHex(firstColor), gameName);
 
         return String.format(
-                "<gradient:#%s:#%s",
+                "<gradient:#%s:#%s>%s</gradient>",
                 ColorUtil.toHex(firstColor),
-                ColorUtil.toHex(secondColor)
+                ColorUtil.toHex(secondColor),
+                gameName
         );
     }
 

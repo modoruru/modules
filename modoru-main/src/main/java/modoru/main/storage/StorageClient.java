@@ -12,7 +12,6 @@ import org.json.JSONObject;
 import su.hitori.api.Hitori;
 import su.hitori.api.Pair;
 import su.hitori.api.logging.LoggerFactory;
-import su.hitori.api.module.ModuleInitializer;
 import su.hitori.api.util.Messages;
 import su.hitori.api.util.Text;
 import su.hitori.ux.UXModule;

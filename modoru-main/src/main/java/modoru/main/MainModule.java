@@ -2,6 +2,7 @@ package modoru.main;
 
 import modoru.main.chat.PrivateMessageCommand;
 import modoru.main.pack.PackProcessor;
+import modoru.main.player.cosmetics.ParticlesListener;
 import modoru.main.storage.StorageListener;
 import modoru.main.storage.StorageClient;
 import net.kyori.adventure.key.Key;
@@ -41,7 +42,8 @@ public final class MainModule extends Module {
         packProcessor = new PackProcessor(this);
 
         context.listeners().register(
-                new StorageListener(storageReference)
+                new StorageListener(storageReference),
+                new ParticlesListener(storageReference)
         );
         context.commands().register(
                 new PrivateMessageCommand(storageReference)

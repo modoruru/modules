@@ -4,6 +4,7 @@ import modoru.main.data.server.AcquirableNameColor;
 import modoru.main.data.user.AcquiredNameColor;
 import modoru.main.data.user.Subscription;
 import modoru.main.data.user.TeamRole;
+import modoru.main.data.user.cosmetics.Particle;
 import org.json.JSONObject;
 import su.hitori.ux.storage.DataField;
 import su.hitori.ux.storage.serialize.JSONCodec;
@@ -30,6 +31,7 @@ public final class DataFields {
             mapCodec(DataField.castCodec(), AcquiredNameColor.JSON_CODEC)
     );
     public static final DataField<AcquiredNameColor> CURRENT_NAME_COLOR = user("current_name_color", AcquiredNameColor.JSON_CODEC);
+    public static final DataField<Particle> CURRENT_PARTICLE = user("current_particle", enumCodec(Particle.class));
 
     // server
     public static final DataField<Map<String, AcquirableNameColor>> ACQUIRABLE_NAME_COLORS = server(
