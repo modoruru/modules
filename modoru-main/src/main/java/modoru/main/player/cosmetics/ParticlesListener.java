@@ -71,7 +71,7 @@ public final class ParticlesListener implements Listener {
                         })
                         .<Player>map(UnsafeUtil::cast)
                         .toList()
-        ).count(1).spawn();
+        ).count(particle.thirdPersonCount).spawn();
     }
 
 }
