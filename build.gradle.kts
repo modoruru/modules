@@ -25,11 +25,11 @@ subprojects  {
         toolchain.languageVersion.set(JavaLanguageVersion.of(property("java")!! as String))
     }
 
-    version = property("version")!!
+    // removes "modoru-" from the project name and adds "_version". example: "modoru-main" -> "main" -> "main_version"
+    version = property(project.name.substring(7) + "_version")!!
 
     dependencies {
         compileOnly("io.papermc.paper:paper-api:${property("paper_version")}")
-        compileOnly("dev.jorel:commandapi-paper-core:${property("commandapi_version")}")
         compileOnly("com.github.modoruru:hitori:${property("hitori_version")}")
         compileOnly("com.github.modoruru:hitori-resourcepack:${property("resourcepack_version")}")
         compileOnly("com.github.modoruru:hitori-ux:${property("ux_version")}")

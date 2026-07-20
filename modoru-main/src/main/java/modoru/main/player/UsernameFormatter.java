@@ -5,7 +5,7 @@ import modoru.main.data.server.AcquirableNameColor;
 import modoru.main.data.user.AcquiredNameColor;
 import modoru.main.util.ColorUtil;
 import org.bukkit.entity.Player;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 import su.hitori.ux.storage.DataContainer;
 import su.hitori.ux.storage.Storage;
 
