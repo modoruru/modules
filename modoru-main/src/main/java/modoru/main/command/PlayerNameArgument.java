@@ -6,6 +6,7 @@ import dev.jorel.commandapi.CommandAPIBukkit;
 import dev.jorel.commandapi.arguments.Argument;
 import dev.jorel.commandapi.arguments.CommandAPIArgumentType;
 import dev.jorel.commandapi.executors.CommandArguments;
+import org.jspecify.annotations.Nullable;
 import su.hitori.api.util.UnsafeUtil;
 
 import java.lang.reflect.Field;
@@ -32,7 +33,7 @@ public final class PlayerNameArgument extends Argument<String> {
     }
 
     @Override
-    public <CSS> String parseArgument(CommandContext<CSS> cmdCtx, String key, CommandArguments previousArgs) {
+    public <CSS> @Nullable String parseArgument(CommandContext<CSS> cmdCtx, String key, CommandArguments previousArgs) {
         try {
             Field argumentsField = cmdCtx.getClass().getDeclaredField("arguments");
             argumentsField.setAccessible(true);

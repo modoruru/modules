@@ -4,6 +4,7 @@ import modoru.main.MainModule;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.key.Keyed;
 import org.json.JSONObject;
+import org.jspecify.annotations.Nullable;
 import su.hitori.api.Hitori;
 import su.hitori.api.logging.LoggerFactory;
 import su.hitori.api.util.IOUtil;
@@ -53,7 +54,7 @@ public final class PackProcessor {
         if(!packFolder.exists() && !packFolder.mkdirs()) throw new IllegalStateException("Unable to create pack folder.");
     }
 
-    private Generator generator(Key resourcePackModuleKey) {
+    private @Nullable Generator generator(Key resourcePackModuleKey) {
         return Hitori.instance().moduleRepository()
                 .<PackModule>getUnsafe(resourcePackModuleKey)
                 .map(PackModule::generator)
@@ -95,7 +96,7 @@ public final class PackProcessor {
         conveyor(generator, Key.key("translations"), Translations.class).removeSupplier(mainModule.key());
     }
 
-    private byte[] resolveGlyphTexture(String path) {
+    private byte @Nullable [] resolveGlyphTexture(String path) {
         byte[] texture = cachedGlyphTextures.get(path);
         if(texture != null) return texture;
 

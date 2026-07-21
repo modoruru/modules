@@ -9,6 +9,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.json.JSONObject;
+import org.jspecify.annotations.Nullable;
 import su.hitori.api.Hitori;
 import su.hitori.api.Pair;
 import su.hitori.api.logging.LoggerFactory;
@@ -48,7 +49,7 @@ public final class StorageClient extends RemoteStorage {
         this.transferPrivateMessageRequests = new HashMap<>();
     }
 
-    public static StorageClient create(Key uxModuleKey) {
+    public static @Nullable StorageClient create(Key uxModuleKey, ScheduledExecutorService executorService) {
         UXModule uxModule = Hitori.instance().moduleRepository()
                 .<UXModule>getUnsafe(uxModuleKey)
                 .orElse(null);
@@ -57,7 +58,7 @@ public final class StorageClient extends RemoteStorage {
         var clientConfig = MainConfiguration.I.storageClient;
 
         StorageClient client = new StorageClient(
-                uxModule.executorService(),
+                executorService,
                 URI.create(clientConfig.address),
                 clientConfig.user,
                 clientConfig.password,
@@ -308,7 +309,7 @@ public final class StorageClient extends RemoteStorage {
         });
     }
 
-    private static UUID parseUuid(String string) {
+    private static @Nullable UUID parseUuid(@Nullable String string) {
         if(string == null || string.isEmpty()) return null;
 
         try {
