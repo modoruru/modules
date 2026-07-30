@@ -41,27 +41,29 @@ public final class StorageClient extends RemoteStorage {
     private static final Logger LOGGER = LoggerFactory.instance().create();
 
     private final Chat chat;
+    private final MainConfiguration configuration;
     private final Map<UUID, TransferPrivateMessageRequest> transferPrivateMessageRequests; // request uuid - sender container
 
-    public StorageClient(ScheduledExecutorService executorService, URI uri, String user, String password, Chat chat) {
+    public StorageClient(ScheduledExecutorService executorService, URI uri, String user, String password, MainConfiguration configuration, Chat chat) {
         super(executorService, uri, user, password);
         this.chat = chat;
+        this.configuration = configuration;
         this.transferPrivateMessageRequests = new HashMap<>();
     }
 
-    public static @Nullable StorageClient create(Key uxModuleKey, ScheduledExecutorService executorService) {
+    public static @Nullable StorageClient create(MainConfiguration configuration, Key uxModuleKey, ScheduledExecutorService executorService) {
         UXModule uxModule = Hitori.instance().moduleRepository()
                 .<UXModule>getUnsafe(uxModuleKey)
                 .orElse(null);
         if(uxModule == null) return null;
 
-        var clientConfig = MainConfiguration.I.storageClient;
-
+        var clientConfig = configuration.storageClient;
         StorageClient client = new StorageClient(
                 executorService,
-                URI.create(clientConfig.address),
-                clientConfig.user,
-                clientConfig.password,
+                URI.create(clientConfig.address.get()),
+                clientConfig.user.get(),
+                clientConfig.password.get(),
+                configuration,
                 uxModule.chat()
         );
         uxModule.installStorage(client);
@@ -184,6 +186,7 @@ public final class StorageClient extends RemoteStorage {
                 }
 
                 PrivateMessageCommand.sendPrivateMessageLocally(
+                        configuration,
                         null,
                         senderContainer,
                         receiverAsPlayer,
@@ -234,6 +237,7 @@ public final class StorageClient extends RemoteStorage {
                 );
 
                 PrivateMessageCommand.sendPrivateMessageLocally(
+                        configuration,
                         senderAsPlayer,
                         request.senderContainer(),
                         null,

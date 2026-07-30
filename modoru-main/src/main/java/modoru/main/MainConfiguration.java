@@ -1,35 +1,27 @@
 package modoru.main;
 
-import su.hitori.api.config.Configuration;
+import su.hitori.api.configuration.Field;
+import su.hitori.api.configuration.SectionScheme;
 
-import java.nio.file.Path;
+public final class MainConfiguration extends SectionScheme {
 
-public final class MainConfiguration extends Configuration {
+    public final Chat chat = new Chat();
+    public final StorageClient storageClient = new StorageClient();
 
-    public static MainConfiguration I;
+    public static final class Chat extends SectionScheme {
+        public final DirectMessages directMessages = new DirectMessages();
 
-    public MainConfiguration(Path path) {
-        super(path);
-        I = this;
-    }
-
-    public Chat chat = new Chat();
-    public StorageClient storageClient = new StorageClient();
-
-    public static final class Chat {
-        public DirectMessages directMessages = new DirectMessages();
-
-        public static final class DirectMessages {
-            public String remoteReceiverFormat = "<color:#479dff><hover:show_text:'<lang:modoru.main.remote_message_hover:'<aqua>%original_client%':'%delay%'>'>ℹ[%sender_name% » I]:</color> <white><click:suggest_command:'/tell %sender_name% '>%message%</white>";
-            public String receiverFormat = "<color:#479dff>[%sender_name% » I]:</color> <white><click:suggest_command:'/tell %sender_name% '>%message%</white>";
-            public String senderFormat = "<color:#47ff8e>[I » %receiver_name%]:</color> <white><click:suggest_command:'/tell %receiver_name% '>%message%</white>";
+        public static final class DirectMessages extends SectionScheme {
+            public final Field<String> remoteReceiverFormat = Field.create("<color:#479dff><hover:show_text:\"<lang:modoru.main.remote_message_hover:'<aqua>%original_client%':'%delay%'>\">ℹ</hover> [%sender_name% » I]:</color> <white><click:suggest_command:'/tell %sender_name% '>%message%</white>");
+            public final Field<String> receiverFormat = Field.create("<color:#479dff>[%sender_name% » I]:</color> <white><click:suggest_command:'/tell %sender_name% '>%message%</white>");
+            public final Field<String> senderFormat = Field.create("<color:#47ff8e>[I » %receiver_name%]:</color> <white><click:suggest_command:'/tell %receiver_name% '>%message%</white>");
         }
     }
 
-    public static final class StorageClient {
-        public String address = "ws://localhost:80";
-        public String user = "root";
-        public String password = "root";
+    public static final class StorageClient extends SectionScheme {
+        public final Field<String> address = Field.create("ws://localhost:80");
+        public final Field<String> user = Field.create("root");
+        public final Field<String> password = Field.create("root");
     }
 
 }

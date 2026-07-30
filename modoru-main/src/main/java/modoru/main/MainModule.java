@@ -7,6 +7,9 @@ import modoru.main.proxy.ProxyCompatibility;
 import modoru.main.storage.StorageClient;
 import modoru.main.storage.StorageListener;
 import net.kyori.adventure.key.Key;
+import su.hitori.api.configuration.ConfigurationSource;
+import su.hitori.api.configuration.HitoriConfiguration;
+import su.hitori.api.configuration.serializer.YAMLSerializer;
 import su.hitori.api.module.Module;
 import su.hitori.api.module.compatibility.CompatibilityLayer;
 import su.hitori.api.module.enable.EnableContext;
@@ -23,6 +26,7 @@ public final class MainModule extends Module {
 
     private final AtomicReference<StorageClient> storageReference = new AtomicReference<>();
     private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors());
+    private final MainConfiguration configuration = new MainConfiguration();
 
     private PackProcessor packProcessor;
     private ProxyCompatibility proxyCompatibility;
@@ -36,14 +40,17 @@ public final class MainModule extends Module {
 
         compatibilityLayer.require(UX_MODULE_KEY).addEnableHook(
                 UX_MODULE_KEY,
-                () -> storageReference.set(StorageClient.create(UX_MODULE_KEY, executorService))
+                () -> storageReference.set(StorageClient.create(configuration, UX_MODULE_KEY, executorService))
         );
     }
 
     @Override
     public void enable(EnableContext context) {
-        MainConfiguration configuration = new MainConfiguration(defaultConfig());
-        configuration.reload();
+        context.configurations().register(HitoriConfiguration.create(
+                Key.key("modoru", "main"),
+                configuration,
+                ConfigurationSource.file(YAMLSerializer.INSTANCE, defaultConfig())
+        ));
 
         packProcessor = new PackProcessor(this);
         proxyCompatibility = new ProxyCompatibility(storageReference, executorService);
@@ -52,9 +59,7 @@ public final class MainModule extends Module {
                 new StorageListener(storageReference),
                 new ParticlesListener(storageReference)
         );
-        context.commands().register(
-                new PrivateMessageCommand(storageReference)
-        );
+        context.commands().registerCollection(PrivateMessageCommand.bootstrap(configuration, storageReference));
 
         proxyCompatibility.load();
     }

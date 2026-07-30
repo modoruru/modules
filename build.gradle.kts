@@ -11,6 +11,10 @@ allprojects {
             name = "papermc"
         }
 
+        maven("https://repository.modoru.fun/releases") {
+            name = "modoruReleases"
+        }
+
         maven("https://jitpack.io") {
             name = "jitpack"
         }
@@ -30,8 +34,8 @@ subprojects  {
 
     dependencies {
         compileOnly("io.papermc.paper:paper-api:${property("paper_version")}")
-        compileOnly("com.github.modoruru:hitori:${property("hitori_version")}")
-        compileOnly("com.github.modoruru:hitori-resourcepack:${property("resourcepack_version")}")
-        compileOnly("com.github.modoruru:hitori-ux:${property("ux_version")}")
+        compileOnly("su.hitori:hitori:${property("hitori_version")}")
+        compileOnly("su.hitori:hitori-resourcepack:${property("resourcepack_version")}")
+        compileOnly("su.hitori.ux:module:${property("ux_version")}")
     }
 }
