@@ -35,6 +35,8 @@ public final class FormattedNamesPayload {
     public void encode(FriendlyByteBuf output) {
         if(direction != Direction.PROXY_BOUND) throw new IllegalStateException("Only PROXY_BOUND encoding is supported");
 
+        output.writeByte(0);
+
         assert resultNames != null;
         int size = resultNames.size();
 

@@ -62,15 +62,15 @@ public final class ProxyCompatibility {
             assert payload.requestedNames() != null;
 
             Map<UUID, String> results = new HashMap<>();
-            for (UUID requestedPlayerName : payload.requestedNames()) {
+            for (UUID requestedGameUuid : payload.requestedNames()) {
                 try {
-                    DataContainer container = storage.getUserDataContainer(requestedPlayerName, null, null, false, false).get();
+                    DataContainer container = storage.getUserDataContainer(null, requestedGameUuid, null, true, false).get();
                     if(container == null) continue;
 
                     String formattedName = UsernameFormatter.format(serverContainer, container);
                     assert formattedName != null;
 
-                    results.put(requestedPlayerName, formattedName);
+                    results.put(requestedGameUuid, formattedName);
                 }
                 catch (Exception _) {}
             }
