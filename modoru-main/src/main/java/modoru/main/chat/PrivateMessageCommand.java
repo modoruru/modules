@@ -6,6 +6,7 @@ import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import modoru.main.MainConfiguration;
+import modoru.main.command.CommandUtil;
 import modoru.main.command.PlayerNameArgumentType;
 import modoru.main.storage.StorageClient;
 import org.bukkit.Bukkit;
@@ -17,9 +18,7 @@ import su.hitori.ux.placeholder.Placeholder;
 import su.hitori.ux.placeholder.Placeholders;
 import su.hitori.ux.storage.DataContainer;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 @SuppressWarnings("UnstableApiUsage")
@@ -35,21 +34,16 @@ public final class PrivateMessageCommand {
 
     public static Collection<LiteralCommandNode<CommandSourceStack>> bootstrap(MainConfiguration configuration, AtomicReference<StorageClient> storageReference) {
         PrivateMessageCommand privateMessageCommand = new PrivateMessageCommand(configuration, storageReference);
-        LiteralCommandNode<CommandSourceStack> command = Commands.literal("msg")
-                .requires(source -> source.getSender() instanceof Player)
-                .then(Commands.argument("receiver", PlayerNameArgumentType.playerName())
-                        .then(Commands.argument("message", StringArgumentType.greedyString())
-                                .executes(privateMessageCommand::execute)))
-                .build();
 
-        List<LiteralCommandNode<CommandSourceStack>> nodes = new ArrayList<>();
-        nodes.add(command);
-
-        for (String literal : List.of("m", "w", "tell")) {
-            nodes.add(Commands.literal(literal).redirect(command).build());
-        }
-
-        return nodes;
+        return CommandUtil.withAliases(
+                Commands.literal("msg")
+                        .requires(CommandUtil.onlyPlayer())
+                        .then(Commands.argument("receiver", PlayerNameArgumentType.playerName())
+                                .then(Commands.argument("message", StringArgumentType.greedyString())
+                                        .executes(privateMessageCommand::execute)))
+                        .build(),
+                "m", "w", "tell"
+        );
     }
 
     private int execute(CommandContext<CommandSourceStack> context) {

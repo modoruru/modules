@@ -18,6 +18,7 @@ import org.bukkit.plugin.messaging.Messenger;
 import org.jspecify.annotations.Nullable;
 import su.hitori.api.Hitori;
 import su.hitori.api.logging.LoggerFactory;
+import su.hitori.api.util.LoggerUtil;
 import su.hitori.api.util.Text;
 import su.hitori.ux.placeholder.DynamicPlaceholder;
 import su.hitori.ux.placeholder.Placeholders;
@@ -183,22 +184,27 @@ public final class ProxyCommunication {
     }
 
     private void sendFormattedTab() {
-        assert header != null && footer != null;
-        timePerTickCache.clear();
-        ticksPerSecondCache.clear();
+        try {
+            assert header != null && footer != null;
+            timePerTickCache.clear();
+            ticksPerSecondCache.clear();
 
-        Bukkit.getOnlinePlayers().parallelStream().forEach(player -> {
-            FriendlyByteBuf output = new FriendlyByteBuf(Unpooled.buffer());
-            FormattedTabPayload.encode(
-                    formatHeaderOrFooter(player, header),
-                    formatHeaderOrFooter(player, footer),
-                    output
-            );
+            Bukkit.getOnlinePlayers().forEach(player -> {
+                FriendlyByteBuf output = new FriendlyByteBuf(Unpooled.buffer());
+                FormattedTabPayload.encode(
+                        formatHeaderOrFooter(player, header),
+                        formatHeaderOrFooter(player, footer),
+                        output
+                );
 
-            byte[] resultPayload = new byte[output.readableBytes()];
-            output.readBytes(resultPayload);
-            player.sendPluginMessage(Hitori.instance().plugin(), FORMATTED_TAB, resultPayload);
-        });
+                byte[] resultPayload = new byte[output.readableBytes()];
+                output.readBytes(resultPayload);
+                player.sendPluginMessage(Hitori.instance().plugin(), FORMATTED_TAB, resultPayload);
+            });
+        }
+        catch (Throwable throwable) {
+            LOGGER.severe(LoggerUtil.exceptionToString(throwable));
+        }
     }
 
     private void acceptMessage(String channel, Player player, byte[] message) {
@@ -208,10 +214,16 @@ public final class ProxyCommunication {
         header = payload.header();
         footer = payload.footer();
 
-        if(formattedTabTask == null) {
-            int seconds = payload.updateIntervalSeconds();
-            formattedTabTask = executorService.scheduleAtFixedRate(this::sendFormattedTab, 0, seconds, TimeUnit.SECONDS);
+        if(formattedTabTask != null) {
+            formattedTabTask.cancel(false);
+            try {
+                formattedTabTask.get();
+            }
+            catch (Exception _) {}
         }
+
+        int seconds = payload.updateIntervalSeconds();
+        formattedTabTask = executorService.scheduleAtFixedRate(this::sendFormattedTab, 1, seconds, TimeUnit.SECONDS);
     }
 
     public void unload() {
