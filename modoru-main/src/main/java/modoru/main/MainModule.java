@@ -3,7 +3,7 @@ package modoru.main;
 import modoru.main.chat.PrivateMessageCommand;
 import modoru.main.pack.PackProcessor;
 import modoru.main.player.cosmetics.ParticlesListener;
-import modoru.main.proxy.ProxyCompatibility;
+import modoru.main.proxy.ProxyCommunication;
 import modoru.main.storage.StorageClient;
 import modoru.main.storage.StorageListener;
 import net.kyori.adventure.key.Key;
@@ -29,7 +29,7 @@ public final class MainModule extends Module {
     private final MainConfiguration configuration = new MainConfiguration();
 
     private PackProcessor packProcessor;
-    private ProxyCompatibility proxyCompatibility;
+    private ProxyCommunication proxyCommunication;
 
     @Override
     public void setupCompatibility(CompatibilityLayer compatibilityLayer) {
@@ -53,7 +53,7 @@ public final class MainModule extends Module {
         ));
 
         packProcessor = new PackProcessor(this);
-        proxyCompatibility = new ProxyCompatibility(storageReference, executorService);
+        proxyCommunication = new ProxyCommunication(storageReference, executorService);
 
         context.listeners().register(
                 new StorageListener(storageReference),
@@ -61,13 +61,13 @@ public final class MainModule extends Module {
         );
         context.commands().registerCollection(PrivateMessageCommand.bootstrap(configuration, storageReference));
 
-        proxyCompatibility.load();
+        proxyCommunication.load();
     }
 
     @Override
     public void disable() {
         packProcessor.unload(RESOURCEPACK_MODULE_KEY);
-        proxyCompatibility.unload();
+        proxyCommunication.unload();
     }
 
 }

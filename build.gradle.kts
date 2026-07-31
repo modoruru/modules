@@ -33,7 +33,7 @@ subprojects  {
     version = property(project.name.substring(7) + "_version")!!
 
     dependencies {
-        compileOnly("io.papermc.paper:paper-api:${property("paper_version")}")
+        compileOnly("dev.folia:folia-api:${property("paper_version")}")
         compileOnly("su.hitori:hitori:${property("hitori_version")}")
         compileOnly("su.hitori:hitori-resourcepack:${property("resourcepack_version")}")
         compileOnly("su.hitori.ux:module:${property("ux_version")}")

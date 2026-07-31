@@ -2,5 +2,5 @@ repositories {
 }
 
 dependencies {
-    paperweight.paperDevBundle(property("paper_version") as String)
+    paperweight.foliaDevBundle(property("paper_version") as String)
 }
