@@ -2,6 +2,8 @@ package modoru.main.proxy;
 
 import io.netty.buffer.Unpooled;
 import io.papermc.paper.configuration.GlobalConfiguration;
+import io.papermc.paper.threadedregions.ThreadedRegionizer;
+import io.papermc.paper.threadedregions.TickRegions;
 import modoru.main.player.UsernameFormatter;
 import modoru.main.storage.StorageClient;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -34,46 +36,6 @@ import java.util.logging.Logger;
 public final class ProxyCommunication {
 
     private static final Logger LOGGER = LoggerFactory.instance().create();
-    private static final DynamicPlaceholder<Player>[] PLACEHOLDERS = create(
-            DynamicPlaceholder.create("tps", player -> {
-                double[] array;
-                if(folia()) {
-                    array = Bukkit.getRegionTPS(player.getLocation());
-                    assert array != null;
-                }
-                else array = Bukkit.getTPS();
-
-                return String.format("%.1f", array[0]);
-            }),
-            DynamicPlaceholder.create("mspt", player -> {
-                double value;
-                if(!folia()) value = Bukkit.getAverageTickTime();
-                else {
-                    Location location = player.getLocation();
-                    ServerLevel world = ((CraftWorld) location.getWorld()).getHandle();
-                    value = world.regioniser.getRegionAtSynchronised(location.getBlockX() >> 4, location.getBlockZ() >> 4)
-                            .getData()
-                            .getRegionSchedulingHandle()
-                            .getTickReport5s(System.nanoTime())
-                            .timePerTickData()
-                            .segmentAll()
-                            .average() / 1.0E6;
-                }
-
-                return String.format("%.1f", value);
-            }),
-            DynamicPlaceholder.create("online", _ -> Bukkit.getOnlinePlayers().size()),
-            DynamicPlaceholder.create("player_name", Player::getName)
-    );
-
-    private static boolean folia() {
-        return Hitori.instance().serverCoreInfo().isFolia();
-    }
-
-    @SafeVarargs
-    private static DynamicPlaceholder<Player>[] create(DynamicPlaceholder<Player>... placeholders) {
-        return placeholders;
-    }
 
     private static final String
             FORMATTED_USERNAMES = "modoru:formatted_names",
@@ -83,6 +45,12 @@ public final class ProxyCommunication {
     private final AtomicReference<StorageClient> storageReference;
     private final ScheduledExecutorService executorService;
     private final MiniMessage vanillaMinimessage;
+
+    // created to decrease recalculations
+    private final Map<ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData>, Double>
+            timePerTickCache, ticksPerSecondCache;
+
+    private final DynamicPlaceholder<Player>[] placeholders;
 
     private boolean loaded;
     private boolean failedToLoad;
@@ -95,6 +63,61 @@ public final class ProxyCommunication {
         this.storageReference = storageReference;
         this.executorService = executorService;
         this.vanillaMinimessage = MiniMessage.miniMessage();
+
+        this.timePerTickCache = new HashMap<>();
+        this.ticksPerSecondCache = new HashMap<>();
+
+        this.placeholders = create(
+                DynamicPlaceholder.create("tps", player -> {
+                    double value;
+                    if(!folia()) value = Bukkit.getTPS()[0];
+                    else {
+                        Location location = player.getLocation();
+                        ServerLevel world = ((CraftWorld) location.getWorld()).getHandle();
+                        value = ticksPerSecondCache.computeIfAbsent(
+                                world.regioniser.getRegionAtSynchronised(location.getBlockX() >> 4, location.getBlockZ() >> 4),
+                                region -> region.getData()
+                                        .getRegionSchedulingHandle()
+                                        .getTickReport5s(System.nanoTime())
+                                        .tpsData()
+                                        .segmentAll()
+                                        .average()
+                        );
+                    }
+
+                    return String.format("%.1f", value);
+                }),
+                DynamicPlaceholder.create("mspt", player -> {
+                    double value;
+                    if(!folia()) value = Bukkit.getAverageTickTime();
+                    else {
+                        Location location = player.getLocation();
+                        ServerLevel world = ((CraftWorld) location.getWorld()).getHandle();
+                        value = timePerTickCache.computeIfAbsent(
+                                world.regioniser.getRegionAtSynchronised(location.getBlockX() >> 4, location.getBlockZ() >> 4),
+                                region -> region.getData()
+                                        .getRegionSchedulingHandle()
+                                        .getTickReport5s(System.nanoTime())
+                                        .timePerTickData()
+                                        .segmentAll()
+                                        .average() / 1.0E6
+                        );
+                    }
+
+                    return String.format("%.1f", value);
+                }),
+                DynamicPlaceholder.create("online", _ -> Bukkit.getOnlinePlayers().size()),
+                DynamicPlaceholder.create("player_name", Player::getName)
+        );
+    }
+
+    private static boolean folia() {
+        return Hitori.instance().serverCoreInfo().isFolia();
+    }
+
+    @SafeVarargs
+    private static DynamicPlaceholder<Player>[] create(DynamicPlaceholder<Player>... placeholders) {
+        return placeholders;
     }
 
     public boolean failedToLoad() {
@@ -156,11 +179,14 @@ public final class ProxyCommunication {
     }
 
     private String formatHeaderOrFooter(Player player, String input) {
-        return completeServerOnlyTags(Placeholders.resolveDynamic(input, player, PLACEHOLDERS));
+        return completeServerOnlyTags(Placeholders.resolveDynamic(input, player, placeholders));
     }
 
     private void sendFormattedTab() {
         assert header != null && footer != null;
+        timePerTickCache.clear();
+        ticksPerSecondCache.clear();
+
         Bukkit.getOnlinePlayers().parallelStream().forEach(player -> {
             FriendlyByteBuf output = new FriendlyByteBuf(Unpooled.buffer());
             FormattedTabPayload.encode(
