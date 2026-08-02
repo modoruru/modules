@@ -28,6 +28,7 @@ public final class IOUtil {
             File outFile = new File(destination, fileName);
             try (FileInputStream fis = new FileInputStream(file); FileOutputStream fos = new FileOutputStream(outFile)) {
                 fis.transferTo(fos);
+                fos.flush();
             }
             catch (IOException exception) {
                 throw new RuntimeException(exception);
