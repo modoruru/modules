@@ -2,6 +2,7 @@ package modoru.main;
 
 import modoru.main.chat.PrivateMessageCommand;
 import modoru.main.pack.PackProcessor;
+import modoru.main.pack.remote.PackRemote;
 import modoru.main.player.cosmetics.ParticlesListener;
 import modoru.main.proxy.ProxyCommunication;
 import modoru.main.storage.StorageClient;
@@ -29,6 +30,7 @@ public final class MainModule extends Module {
     private final MainConfiguration configuration = new MainConfiguration();
 
     private PackProcessor packProcessor;
+    private PackRemote packRemote;
     private ProxyCommunication proxyCommunication;
 
     @Override
@@ -53,6 +55,7 @@ public final class MainModule extends Module {
         ));
 
         packProcessor = new PackProcessor(this);
+        packRemote = new PackRemote(configuration, executorService, packProcessor, folder().toFile());
         proxyCommunication = new ProxyCommunication(storageReference, executorService);
 
         context.listeners().register(
@@ -61,6 +64,7 @@ public final class MainModule extends Module {
         );
         context.commands().registerCollection(PrivateMessageCommand.bootstrap(configuration, storageReference));
 
+        packRemote.performBlocking();
         proxyCommunication.load();
     }
 

@@ -30,14 +30,13 @@ public final class PackProcessor {
     private static final Logger LOGGER = LoggerFactory.instance().create();
 
     private final MainModule mainModule;
-    private final File packFolder;
+    private File packFolder;
 
     private final Map<String, GlyphSnapshot> glyphs;
     private final Map<String, byte[]> cachedGlyphTextures;
     private final Set<String> nonExistingButRequestedGlyphTexture;
 
     private final File glyphsListFile;
-
 
     private boolean loaded;
 
@@ -65,6 +64,10 @@ public final class PackProcessor {
         GenerationConveyor<E> conveyor = generator.getConveyor(key, clazz);
         assert conveyor != null;
         return conveyor;
+    }
+
+    public void packFolder(File packFolder) {
+        this.packFolder = packFolder;
     }
 
     public void load(Key resourcePackModuleKey) {
