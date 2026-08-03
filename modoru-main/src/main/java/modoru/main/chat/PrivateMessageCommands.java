@@ -13,61 +13,90 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 import su.hitori.api.Pair;
+import su.hitori.api.util.Messages;
 import su.hitori.api.util.Text;
 import su.hitori.ux.placeholder.Placeholder;
 import su.hitori.ux.placeholder.Placeholders;
 import su.hitori.ux.storage.DataContainer;
 
-import java.util.Collection;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 @SuppressWarnings("UnstableApiUsage")
-public final class PrivateMessageCommand {
+public final class PrivateMessageCommands {
+
+    static final Map<UUID, String> RECENT_MESSAGE = new HashMap<>();
 
     private final MainConfiguration configuration;
     private final AtomicReference<StorageClient> storageReference;
 
-    private PrivateMessageCommand(MainConfiguration configuration, AtomicReference<StorageClient> storageReference) {
+    private PrivateMessageCommands(MainConfiguration configuration, AtomicReference<StorageClient> storageReference) {
         this.configuration = configuration;
         this.storageReference = storageReference;
     }
 
     public static Collection<LiteralCommandNode<CommandSourceStack>> bootstrap(MainConfiguration configuration, AtomicReference<StorageClient> storageReference) {
-        PrivateMessageCommand privateMessageCommand = new PrivateMessageCommand(configuration, storageReference);
+        PrivateMessageCommands privateMessageCommands = new PrivateMessageCommands(configuration, storageReference);
 
-        return CommandUtil.withAliases(
+        List<LiteralCommandNode<CommandSourceStack>> result = new ArrayList<>();
+        result.addAll(CommandUtil.withAliases(
                 Commands.literal("msg")
                         .requires(CommandUtil.onlyPlayer())
                         .then(Commands.argument("receiver", PlayerNameArgumentType.playerName())
                                 .then(Commands.argument("message", StringArgumentType.greedyString())
-                                        .executes(privateMessageCommand::execute)))
+                                        .executes(privateMessageCommands::execute)))
                         .build(),
                 "m", "w", "tell"
-        );
+        ));
+        result.addAll(CommandUtil.withAliases(
+                Commands.literal("reply")
+                        .requires(CommandUtil.onlyPlayer())
+                        .then(Commands.argument("message", StringArgumentType.greedyString())
+                                .executes(privateMessageCommands::reply))
+                        .build(),
+                "r"
+        ));
+        return result;
+    }
+
+    private int reply(CommandContext<CommandSourceStack> context) {
+        Player player = (Player) context.getSource().getSender();
+        String lastReceiver = RECENT_MESSAGE.get(player.getUniqueId());
+
+        if(lastReceiver == null) {
+            player.sendMessage(Messages.ERROR.create(configuration.chat.privateMessages.noRecentMessage.get()));
+            return 0;
+        }
+
+        return continueMessageProcess(player, lastReceiver, context.getArgument("message", String.class));
     }
 
     private int execute(CommandContext<CommandSourceStack> context) {
-        Player player = (Player) context.getSource().getSender();
-        String receiverName = context.getArgument("receiver", String.class);
-        String message = context.getArgument("message", String.class);
+        return continueMessageProcess(
+                (Player) context.getSource().getSender(),
+                context.getArgument("receiver", String.class),
+                context.getArgument("message", String.class)
+        );
+    }
 
+    private int continueMessageProcess(Player sender, String receiverName, String message) {
         StorageClient storageClient = storageReference.get();
 
         Player localReceiver = Bukkit.getPlayer(receiverName);
         if(localReceiver != null) {
-            storageClient.getUserDataContainer(player)
+            storageClient.getUserDataContainer(sender)
                     .thenCombine(storageClient.getUserDataContainer(localReceiver), (senderContainer, receiverContainer) -> {
                         if(senderContainer == null || receiverContainer == null) return null;
                         return Pair.of(senderContainer, receiverContainer);
                     })
                     .thenAccept(pair -> {
                         if(pair == null) return;
-                        sendPrivateMessageLocally(configuration, player, pair.first(), localReceiver, pair.second(), message, null);
+                        sendPrivateMessageLocally(configuration, sender, pair.first(), localReceiver, pair.second(), message, null);
                     });
             return 0;
         }
 
-        storageClient.sendTransferPrivateMessage(player, receiverName, formatPrivateMessageContent(message));
+        storageClient.sendTransferPrivateMessage(sender, receiverName, formatPrivateMessageContent(message));
         return 1;
     }
 
@@ -99,10 +128,14 @@ public final class PrivateMessageCommand {
                 })
         };
 
-        var config = configuration.chat.directMessages;
+        var config = configuration.chat.privateMessages;
 
-        if(sender != null) sender.sendMessage(Text.create(Placeholders.resolve(config.senderFormat.get(), placeholders)));
+        if(sender != null) {
+            RECENT_MESSAGE.put(sender.getUniqueId(), receiverContainer.identifier().gameName());
+            sender.sendMessage(Text.create(Placeholders.resolve(config.senderFormat.get(), placeholders)));
+        }
         if(receiver != null) {
+            RECENT_MESSAGE.put(receiver.getUniqueId(), senderContainer.identifier().gameName());
             receiver.sendMessage(Text.create(Placeholders.resolve(
                     (originalClientAndCreationTime == null
                             ? config.receiverFormat

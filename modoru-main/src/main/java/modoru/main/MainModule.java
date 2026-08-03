@@ -1,6 +1,7 @@
 package modoru.main;
 
-import modoru.main.chat.PrivateMessageCommand;
+import modoru.main.chat.PrivateMessageCommands;
+import modoru.main.chat.PrivateMessagesListener;
 import modoru.main.pack.PackProcessor;
 import modoru.main.pack.remote.PackRemote;
 import modoru.main.player.cosmetics.ParticlesListener;
@@ -60,9 +61,10 @@ public final class MainModule extends Module {
 
         context.listeners().register(
                 new StorageListener(storageReference),
-                new ParticlesListener(storageReference)
+                new ParticlesListener(storageReference),
+                new PrivateMessagesListener()
         );
-        context.commands().registerCollection(PrivateMessageCommand.bootstrap(configuration, storageReference));
+        context.commands().registerCollection(PrivateMessageCommands.bootstrap(configuration, storageReference));
 
         packRemote.performBlocking();
         proxyCommunication.load();

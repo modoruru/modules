@@ -90,9 +90,9 @@ public final class PackRemote {
         contentsFolder.mkdirs();
 
         File outArchive = new File(contentsFolder, "archive.zip");
-        try (FileOutputStream fis = new FileOutputStream(outArchive)) {
-            githubResolver.downloadZipBall(config.repo.get(), latestCommit, fis);
-            fis.flush();
+        try (FileOutputStream fos = new FileOutputStream(outArchive)) {
+            githubResolver.downloadZipBall(config.repo.get(), latestCommit, fos);
+            fos.flush();
         }
         catch (Throwable throwable) {
             LOGGER.warning("Unable to download repository contents: " + LoggerUtil.exceptionToString(throwable));
@@ -128,9 +128,9 @@ public final class PackRemote {
             return;
         }
 
-        try (FileOutputStream fis = new FileOutputStream(infoFile)) {
-            fis.write(latestCommit.getBytes(StandardCharsets.UTF_8));
-            fis.flush();
+        try (FileOutputStream fos = new FileOutputStream(infoFile)) {
+            fos.write(latestCommit.getBytes(StandardCharsets.UTF_8));
+            fos.flush();
         }
         catch (Throwable throwable) {
             LOGGER.warning("Unable to write info file: " + LoggerUtil.exceptionToString(throwable));

@@ -2,7 +2,7 @@ package modoru.main.storage;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import modoru.main.MainConfiguration;
-import modoru.main.chat.PrivateMessageCommand;
+import modoru.main.chat.PrivateMessageCommands;
 import modoru.main.data.DataFields;
 import net.kyori.adventure.key.Key;
 import org.bukkit.Bukkit;
@@ -185,7 +185,7 @@ public final class StorageClient extends RemoteStorage {
                     return;
                 }
 
-                PrivateMessageCommand.sendPrivateMessageLocally(
+                PrivateMessageCommands.sendPrivateMessageLocally(
                         configuration,
                         null,
                         senderContainer,
@@ -236,7 +236,7 @@ public final class StorageClient extends RemoteStorage {
                         messageBody.optJSONObject("receiver_container")
                 );
 
-                PrivateMessageCommand.sendPrivateMessageLocally(
+                PrivateMessageCommands.sendPrivateMessageLocally(
                         configuration,
                         senderAsPlayer,
                         request.senderContainer(),

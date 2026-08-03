@@ -52,7 +52,6 @@ public final class Subscription {
     }
 
     public static boolean active(DataContainer container) {
-        if(container == null) return false;
         Subscription subscription = container.get(DataFields.SUBSCRIPTION);
         return subscription != null && subscription.active();
     }
