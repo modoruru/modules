@@ -2,6 +2,7 @@ package modoru.survival;
 
 import modoru.survival.mechanics.item.UniqueItems;
 import modoru.survival.mechanics.item.UniqueItemsListener;
+import modoru.survival.mechanics.misc.CropsListener;
 import modoru.survival.mechanics.misc.WardenDropListener;
 import net.kyori.adventure.key.Key;
 import su.hitori.api.configuration.ConfigurationSource;
@@ -36,7 +37,8 @@ public final class SurvivalModule extends Module {
 
         context.listeners().register(
                 new UniqueItemsListener(uniqueItems),
-                new WardenDropListener(configuration)
+                new WardenDropListener(configuration),
+                new CropsListener()
         );
 
         uniqueItems.readFromFile();
