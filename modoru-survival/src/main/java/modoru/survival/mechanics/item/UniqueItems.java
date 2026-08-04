@@ -19,7 +19,6 @@ import su.windmill.bytes.codec.Codec;
 import su.windmill.bytes.codec.context.DecodeContext;
 
 import java.io.File;
-import java.text.NumberFormat;
 import java.util.*;
 import java.util.function.Predicate;
 
@@ -123,7 +122,7 @@ public final class UniqueItems {
         stack.editPersistentDataContainer(data -> data.set(UNIQUE_ID, PersistentDataType.INTEGER, newId));
 
         stack.lore(List.of(
-                Component.text("ID: " + NumberFormat.getInstance(Locale.US).format(newId).replace(',', '_'))
+                Component.text("ID: " + newId)
                         .color(NamedTextColor.GRAY)
                         .decoration(TextDecoration.ITALIC, false)
         ));
