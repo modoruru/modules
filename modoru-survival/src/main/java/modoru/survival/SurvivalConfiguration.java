@@ -9,6 +9,7 @@ public final class SurvivalConfiguration extends SectionScheme {
 
     public static final class Miscellaneous extends SectionScheme {
         public final Field<Float> wardenSwiftSneakDropChance = Field.create(0.4f);
+        public final Field<Boolean> welcomeMessageEnabled = Field.create(true);
     }
 
 }

@@ -5,6 +5,8 @@ import modoru.main.MainConfiguration;
 import modoru.main.chat.PrivateMessageCommands;
 import modoru.main.data.DataFields;
 import net.kyori.adventure.key.Key;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
@@ -253,6 +255,13 @@ public final class StorageClient extends RemoteStorage {
     }
 
     @Override
+    public @Nullable Player getPlayerByIdentifier(Identifier identifier) {
+        ServerPlayer serverPlayer = MinecraftServer.getServer().getPlayerList().getPlayer(identifier.gameName());
+        if(serverPlayer == null) return null;
+        return serverPlayer.getBukkitEntity();
+    }
+
+    @Override
     public void quit(Player player) {
         try {
             RemoteDataContainer container = getUserDataContainer(
@@ -285,31 +294,33 @@ public final class StorageClient extends RemoteStorage {
         assert profile.getId() != null && profile.getName() != null;
 
         long start = System.currentTimeMillis();
-        getUserDataContainer(
-                null,
-                profile.getId(),
-                profile.getName(),
-                true,
-                true
-        ).thenAccept(container -> {
-            if(container == null) return;
+        executorService.execute(() -> {
+            getUserDataContainer(
+                    null,
+                    profile.getId(),
+                    profile.getName(),
+                    true,
+                    true
+            ).thenAccept(container -> {
+                if(container == null) return;
 
-            Player player = Bukkit.getPlayer(profile.getName());
-            if(player != null) {
-                player.playSound(player, Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
-                player.sendActionBar(Text.create(String.format(
-                        "Synchronized in %sms <green>✔</green>",
-                        System.currentTimeMillis() - start
-                )));
-            }
+                Player player = Bukkit.getPlayer(profile.getName());
+                if(player != null) {
+                    player.playSound(player, Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
+                    player.sendActionBar(Text.create(String.format(
+                            "Synchronized in %sms <green>✔</green>",
+                            System.currentTimeMillis() - start
+                    )));
+                }
 
-            clientSocket.send(
-                    new JSONObject()
-                            .put("type", "player_online_status")
-                            .put("online", true)
-                            .put("uuid", container.identifier().uuid())
-                            .toString()
-            );
+                clientSocket.send(
+                        new JSONObject()
+                                .put("type", "player_online_status")
+                                .put("online", true)
+                                .put("uuid", container.identifier().uuid())
+                                .toString()
+                );
+            });
         });
     }
 

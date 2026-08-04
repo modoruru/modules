@@ -1,26 +1,31 @@
 package modoru.main.storage;
 
-import io.papermc.paper.event.player.PlayerServerFullCheckEvent;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerResourcePackStatusEvent;
 import su.hitori.ux.chat.PreProcessedMessage;
 import su.hitori.ux.chat.event.AsyncChatChooseReceiversEvent;
 import su.hitori.ux.chat.event.AsyncPreChatMessageEvent;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class StorageListener implements Listener {
 
     private final AtomicReference<StorageClient> storageReference;
     private final Map<String, PreProcessedMessage> preProcessedMessageCache;
+    private final Set<Player> previouslyLoaded;
 
     public StorageListener(AtomicReference<StorageClient> storageReference) {
         this.storageReference = storageReference;
         this.preProcessedMessageCache = new HashMap<>();
+        this.previouslyLoaded = new HashSet<>();
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -48,14 +53,19 @@ public final class StorageListener implements Listener {
         storageReference.get().sendBroadcastPlayerMessage(preProcessedMessage);
     }
 
-    @EventHandler(priority = EventPriority.LOWEST)
-    private void onPlayerJoin(PlayerServerFullCheckEvent event) {
-        storageReference.get().syncPlayer(event.getPlayerProfile());
+    @EventHandler
+    private void onPlayerResourcepackStatus(PlayerResourcePackStatusEvent event) {
+        Player player = event.getPlayer();
+        if(event.getStatus() != PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED || previouslyLoaded.contains(player)) return;
+        previouslyLoaded.add(player);
+        storageReference.get().syncPlayer(event.getPlayer().getPlayerProfile());
     }
 
     @EventHandler
     private void onPlayerQuit(PlayerQuitEvent event) {
-        storageReference.get().quit(event.getPlayer());
+        Player player = event.getPlayer();
+        storageReference.get().quit(player);
+        previouslyLoaded.remove(player);
     }
 
 }

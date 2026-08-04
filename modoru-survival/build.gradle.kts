@@ -8,6 +8,7 @@ repositories {
 dependencies {
     paperweight.foliaDevBundle(property("paper_version") as String)
     implementation("com.github.justlofe:FastBytes:${property("fastbytes_version")}")
+    compileOnly(project(":modoru-main"))
 }
 
 tasks {

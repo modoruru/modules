@@ -4,6 +4,7 @@ import modoru.survival.mechanics.item.UniqueItems;
 import modoru.survival.mechanics.item.UniqueItemsListener;
 import modoru.survival.mechanics.misc.CropsListener;
 import modoru.survival.mechanics.misc.WardenDropListener;
+import modoru.survival.mechanics.misc.WelcomeMessageListener;
 import net.kyori.adventure.key.Key;
 import su.hitori.api.configuration.ConfigurationSource;
 import su.hitori.api.configuration.serializer.YAMLSerializer;
@@ -14,7 +15,8 @@ import su.hitori.api.module.enable.EnableContext;
 public final class SurvivalModule extends Module {
 
     private static final Key
-            RESOURCEPACK_MODULE_KEY = Key.key("hitori", "resourcepack");
+            RESOURCEPACK_MODULE_KEY = Key.key("hitori", "resourcepack"),
+            MAIN_MODULE_KEY = Key.key("modoru", "main");
 
     private final SurvivalConfiguration configuration = new SurvivalConfiguration();
 
@@ -23,6 +25,7 @@ public final class SurvivalModule extends Module {
     @Override
     public void setupCompatibility(CompatibilityLayer compatibilityLayer) {
         compatibilityLayer.require(RESOURCEPACK_MODULE_KEY);
+        compatibilityLayer.require(MAIN_MODULE_KEY);
     }
 
     @Override
@@ -38,7 +41,8 @@ public final class SurvivalModule extends Module {
         context.listeners().register(
                 new UniqueItemsListener(uniqueItems),
                 new WardenDropListener(configuration),
-                new CropsListener()
+                new CropsListener(),
+                new WelcomeMessageListener()
         );
 
         uniqueItems.readFromFile();

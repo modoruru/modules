@@ -32,6 +32,7 @@ public final class DataFields {
     );
     public static final DataField<AcquiredNameColor> CURRENT_NAME_COLOR = user("current_name_color", AcquiredNameColor.JSON_CODEC);
     public static final DataField<Particle> CURRENT_PARTICLE = user("current_particle", enumCodec(Particle.class));
+    public static final DataField<Boolean> WELCOME_MESSAGE_ENABLED = user("welcome_message_enabled", DataField.castCodec());
 
     // server
     public static final DataField<Map<String, AcquirableNameColor>> ACQUIRABLE_NAME_COLORS = server(
