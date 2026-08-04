@@ -137,7 +137,7 @@ public final class ProxyCommunication {
         }
 
         loaded = true;
-        formattedUsernamesTask = executorService.scheduleAtFixedRate(this::sendFormattedUsernames, 0L, 3L, TimeUnit.SECONDS);
+        formattedUsernamesTask = executorService.scheduleWithFixedDelay(this::sendFormattedUsernames, 1L, 3L, TimeUnit.SECONDS);
 
         messenger.registerIncomingPluginChannel(plugin, TAB_FORMAT, this::acceptMessage);
         messenger.registerOutgoingPluginChannel(plugin, FORMATTED_USERNAMES);
@@ -148,12 +148,12 @@ public final class ProxyCommunication {
         StorageClient storage = storageReference.get();
 
         storage.getServerDataContainer().thenAccept(serverContainer -> executorService.execute(() -> {
-            var players = Bukkit.getOnlinePlayers();
-            if(players.isEmpty()) return;
+            try {
+                var players = Bukkit.getOnlinePlayers();
+                if(players.isEmpty()) return;
 
-            Map<UUID, String> results = new HashMap<>();
-            for (Player player : players) {
-                try {
+                Map<UUID, String> results = new HashMap<>();
+                for (Player player : players) {
                     DataContainer container = storage.getUserDataContainer(player).get();
                     if(container == null) continue;
 
@@ -162,15 +162,17 @@ public final class ProxyCommunication {
 
                     results.put(player.getUniqueId(), completeServerOnlyTags(formattedName));
                 }
-                catch (Exception _) {}
+
+                FriendlyByteBuf output = new FriendlyByteBuf(Unpooled.buffer());
+                FormattedNamesPayload.encode(results, output);
+
+                byte[] resultPayload = new byte[output.readableBytes()];
+                output.readBytes(resultPayload);
+                players.iterator().next().sendPluginMessage(Hitori.instance().plugin(), FORMATTED_USERNAMES, resultPayload);
             }
-
-            FriendlyByteBuf output = new FriendlyByteBuf(Unpooled.buffer());
-            FormattedNamesPayload.encode(results, output);
-
-            byte[] resultPayload = new byte[output.readableBytes()];
-            output.readBytes(resultPayload);
-            players.iterator().next().sendPluginMessage(Hitori.instance().plugin(), FORMATTED_USERNAMES, resultPayload);
+            catch (Exception exception) {
+                LOGGER.warning(LoggerUtil.exceptionToString(exception));
+            }
         }));
     }
 
@@ -223,7 +225,7 @@ public final class ProxyCommunication {
         }
 
         int seconds = payload.updateIntervalSeconds();
-        formattedTabTask = executorService.scheduleAtFixedRate(this::sendFormattedTab, 1, seconds, TimeUnit.SECONDS);
+        formattedTabTask = executorService.scheduleWithFixedDelay(this::sendFormattedTab, 1, seconds, TimeUnit.SECONDS);
     }
 
     public void unload() {
