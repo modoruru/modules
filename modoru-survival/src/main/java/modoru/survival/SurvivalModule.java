@@ -3,6 +3,7 @@ package modoru.survival;
 import modoru.survival.mechanics.item.UniqueItems;
 import modoru.survival.mechanics.item.UniqueItemsListener;
 import modoru.survival.mechanics.misc.CropsListener;
+import modoru.survival.mechanics.misc.PhantomSpawnListener;
 import modoru.survival.mechanics.misc.WardenDropListener;
 import modoru.survival.mechanics.misc.WelcomeMessageListener;
 import net.kyori.adventure.key.Key;
@@ -42,8 +43,12 @@ public final class SurvivalModule extends Module {
                 new UniqueItemsListener(uniqueItems),
                 new WardenDropListener(configuration),
                 new CropsListener(),
-                new WelcomeMessageListener()
+                new WelcomeMessageListener(),
+                new PhantomSpawnListener()
         );
+
+        if(configuration.miscellaneous.welcomeMessageEnabled.get())
+            context.listeners().register(new WelcomeMessageListener());
 
         uniqueItems.readFromFile();
     }

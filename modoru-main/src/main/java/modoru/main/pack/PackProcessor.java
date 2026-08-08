@@ -96,7 +96,9 @@ public final class PackProcessor {
         Generator generator = generator(resourcePackModuleKey);
         if(generator == null) return;
 
-        conveyor(generator, Key.key("translations"), Translations.class).removeSupplier(mainModule.key());
+        Key key = mainModule.key();
+        conveyor(generator, Key.key("translations"), Translations.class).removeSupplier(key);
+        conveyor(generator, Key.key("glyph"), GlyphSnapshot.class).removeSupplier(key);
     }
 
     private byte @Nullable [] resolveGlyphTexture(String path) {
@@ -219,7 +221,7 @@ public final class PackProcessor {
         return List.of(translations);
     }
 
-    private static  <E> Collection<E> empty() {
+    private static <E> Collection<E> empty() {
         return UnsafeUtil.cast(EMPTY);
     }
 
