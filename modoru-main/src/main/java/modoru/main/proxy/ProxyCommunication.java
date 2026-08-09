@@ -6,6 +6,7 @@ import io.papermc.paper.threadedregions.ThreadedRegionizer;
 import io.papermc.paper.threadedregions.TickRegions;
 import modoru.main.player.UsernameFormatter;
 import modoru.main.storage.StorageClient;
+import modoru.main.util.ArrayUtil;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
@@ -68,7 +69,7 @@ public final class ProxyCommunication {
         this.timePerTickCache = new HashMap<>();
         this.ticksPerSecondCache = new HashMap<>();
 
-        this.placeholders = create(
+        this.placeholders = ArrayUtil.create(
                 DynamicPlaceholder.create("tps", player -> {
                     double value;
                     if(!folia()) value = Bukkit.getTPS()[0];
@@ -114,11 +115,6 @@ public final class ProxyCommunication {
 
     private static boolean folia() {
         return Hitori.instance().serverCoreInfo().isFolia();
-    }
-
-    @SafeVarargs
-    private static DynamicPlaceholder<Player>[] create(DynamicPlaceholder<Player>... placeholders) {
-        return placeholders;
     }
 
     public boolean failedToLoad() {
