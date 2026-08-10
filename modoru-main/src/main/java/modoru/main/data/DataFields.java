@@ -1,7 +1,9 @@
 package modoru.main.data;
 
 import modoru.main.data.server.AcquirableNameColor;
+import modoru.main.data.server.Group;
 import modoru.main.data.user.AcquiredNameColor;
+import modoru.main.data.user.Punishment;
 import modoru.main.data.user.Subscription;
 import modoru.main.data.user.TeamRole;
 import modoru.main.data.user.cosmetics.Particle;
@@ -11,10 +13,16 @@ import su.hitori.ux.storage.serialize.JSONCodec;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 public final class DataFields {
 
     private static final String fieldsPrefix = "modoru:";
+
+    private static final JSONCodec<UUID> UUID_CODEC = new JSONCodec<>(
+            UUID::toString,
+            obj -> UUID.fromString((String) obj)
+    );
 
     private static final Map<String, DataField<?>>
             userFields = new HashMap<>(),
@@ -30,6 +38,12 @@ public final class DataFields {
             "acquired_name_colors",
             mapCodec(DataField.castCodec(), AcquiredNameColor.JSON_CODEC)
     );
+    public static final DataField<UUID> GROUP = user("group", UUID_CODEC);
+    public static final DataField<Punishment>
+            ACTIVE_BAN = user("active_ban", Punishment.CODEC),
+            ACTIVE_MUTE = user("active_mute", Punishment.CODEC);
+
+    // preferences
     public static final DataField<AcquiredNameColor> CURRENT_NAME_COLOR = user("current_name_color", AcquiredNameColor.JSON_CODEC);
     public static final DataField<Particle> CURRENT_PARTICLE = user("current_particle", enumCodec(Particle.class));
     public static final DataField<Boolean> WELCOME_MESSAGE_ENABLED = user("welcome_message_enabled", DataField.castCodec());
@@ -39,6 +53,7 @@ public final class DataFields {
             "acquirable_name_colors",
             mapCodec(DataField.castCodec(), AcquirableNameColor.JSON_CODEC)
     );
+    public static final DataField<Map<UUID, Group>> GROUPS = server("groups", mapCodec(UUID_CODEC, Group.CODEC));
 
     public static DataField<?>[] userFields() {
         return userFields.values().toArray(new DataField[0]);

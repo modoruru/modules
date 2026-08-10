@@ -261,6 +261,16 @@ public final class StorageClient extends RemoteStorage {
         return serverPlayer.getBukkitEntity();
     }
 
+    public RemoteDataContainer getServerDataContainerInstantly() {
+        try {
+            return getServerDataContainer().get();
+        }
+        catch (Exception exception) {
+            internalClose(true);
+            throw new RuntimeException(exception);
+        }
+    }
+
     @Override
     public void quit(Player player) {
         try {
