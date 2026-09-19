@@ -1,0 +1,21 @@
+{
+  "key": "modoru:lobby",
+  "version": "${version}",
+  "main": "modoru.lobby.LobbyModule",
+  "packages": [
+    "modoru.lobby"
+  ],
+
+  "depends": {
+    "java": ">=${java_version}",
+    "hitori": ">=${hitori_version}",
+    "hitori:resourcepack": {
+      "type": "hard",
+      "version": ">=${resourcepack_version}"
+    },
+    "modoru:main": {
+      "type": "hard",
+      "version": ">=${main_version}"
+    }
+  }
+}

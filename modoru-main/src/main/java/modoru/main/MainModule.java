@@ -36,12 +36,12 @@ public final class MainModule extends Module {
 
     @Override
     public void setupCompatibility(CompatibilityLayer compatibilityLayer) {
-        compatibilityLayer.require(RESOURCEPACK_MODULE_KEY).addEnableHook(
+        compatibilityLayer.addEnableHook(
                 RESOURCEPACK_MODULE_KEY,
                 () -> packProcessor.load(RESOURCEPACK_MODULE_KEY)
         );
 
-        compatibilityLayer.require(UX_MODULE_KEY).addEnableHook(
+        compatibilityLayer.addEnableHook(
                 UX_MODULE_KEY,
                 () -> storageReference.set(StorageClient.create(configuration, UX_MODULE_KEY, executorService))
         );

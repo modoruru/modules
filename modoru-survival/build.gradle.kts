@@ -23,4 +23,16 @@ tasks {
     build {
         dependsOn(shadowJar)
     }
+
+    processResources {
+        filesMatching("hitori.module.json") {
+            expand(
+                "version" to project.version,
+                "java_version" to findProperty("java") as String,
+                "hitori_version" to findProperty("hitori_version") as String,
+                "main_version" to findProperty("main_version") as String,
+                "resourcepack_version" to findProperty("resourcepack_version") as String
+            )
+        }
+    }
 }
