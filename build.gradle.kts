@@ -36,6 +36,6 @@ subprojects  {
         compileOnly("dev.folia:folia-api:${property("paper_version")}")
         compileOnly("su.hitori:hitori:${property("hitori_version")}")
         compileOnly("su.hitori:hitori-resourcepack:${property("resourcepack_version")}")
-        compileOnly("su.hitori.ux:module:${property("ux_version")}")
+        compileOnly("fun.modoru:musubi:${property("musubi_version")}")
     }
 }

@@ -23,8 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class MainModule extends Module {
 
     private static final Key
-            RESOURCEPACK_MODULE_KEY = Key.key("hitori", "resourcepack"),
-            UX_MODULE_KEY = Key.key("hitori", "ux");
+            RESOURCEPACK_MODULE_KEY = Key.key("hitori", "resourcepack");
 
     private final AtomicReference<StorageClient> storageReference = new AtomicReference<>();
     private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors());
@@ -39,11 +38,6 @@ public final class MainModule extends Module {
         compatibilityLayer.addEnableHook(
                 RESOURCEPACK_MODULE_KEY,
                 () -> packProcessor.load(RESOURCEPACK_MODULE_KEY)
-        );
-
-        compatibilityLayer.addEnableHook(
-                UX_MODULE_KEY,
-                () -> storageReference.set(StorageClient.create(configuration, UX_MODULE_KEY, executorService))
         );
     }
 

@@ -14,8 +14,7 @@
       "version": ">=${resourcepack_version}"
     },
     "hitori:ux": {
-      "type": "hard",
-      "version": ">=${ux_version}"
+      "type": "incompatible"
     }
   }
 }
