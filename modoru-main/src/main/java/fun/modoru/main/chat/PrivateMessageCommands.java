@@ -3,40 +3,36 @@ package fun.modoru.main.chat;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import fun.modoru.main.musubi.ModuleMusubiClient;
+import fun.modoru.main.musubi.UserContainer;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import fun.modoru.main.MainConfiguration;
 import fun.modoru.main.command.CommandUtil;
 import fun.modoru.main.command.PlayerNameArgumentType;
-import fun.modoru.main.storage.StorageClient;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 import su.hitori.api.Pair;
 import su.hitori.api.util.Messages;
 import su.hitori.api.util.Text;
-import su.hitori.ux.placeholder.Placeholder;
-import su.hitori.ux.placeholder.Placeholders;
-import su.hitori.ux.storage.DataContainer;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 
-@SuppressWarnings("UnstableApiUsage")
 public final class PrivateMessageCommands {
 
     static final Map<UUID, String> RECENT_MESSAGE = new HashMap<>();
 
     private final MainConfiguration configuration;
-    private final AtomicReference<StorageClient> storageReference;
+    private final ModuleMusubiClient musubiClient;
 
-    private PrivateMessageCommands(MainConfiguration configuration, AtomicReference<StorageClient> storageReference) {
+    private PrivateMessageCommands(MainConfiguration configuration, ModuleMusubiClient musubiClient) {
         this.configuration = configuration;
-        this.storageReference = storageReference;
+        this.musubiClient = musubiClient;
     }
 
-    public static Collection<LiteralCommandNode<CommandSourceStack>> bootstrap(MainConfiguration configuration, AtomicReference<StorageClient> storageReference) {
-        PrivateMessageCommands privateMessageCommands = new PrivateMessageCommands(configuration, storageReference);
+    public static Collection<LiteralCommandNode<CommandSourceStack>> bootstrap(MainConfiguration configuration, ModuleMusubiClient musubiClient) {
+        PrivateMessageCommands privateMessageCommands = new PrivateMessageCommands(configuration, musubiClient);
 
         List<LiteralCommandNode<CommandSourceStack>> result = new ArrayList<>();
         result.addAll(CommandUtil.withAliases(
@@ -80,12 +76,10 @@ public final class PrivateMessageCommands {
     }
 
     private int continueMessageProcess(Player sender, String receiverName, String message) {
-        StorageClient storageClient = storageReference.get();
-
         Player localReceiver = Bukkit.getPlayer(receiverName);
         if(localReceiver != null) {
-            storageClient.getUserDataContainer(sender)
-                    .thenCombine(storageClient.getUserDataContainer(localReceiver), (senderContainer, receiverContainer) -> {
+            musubiClient.getUserContainer(sender)
+                    .thenCombine(musubiClient.getUserContainer(localReceiver), (senderContainer, receiverContainer) -> {
                         if(senderContainer == null || receiverContainer == null) return null;
                         return Pair.of(senderContainer, receiverContainer);
                     })
@@ -96,7 +90,8 @@ public final class PrivateMessageCommands {
             return 0;
         }
 
-        storageClient.sendTransferPrivateMessage(sender, receiverName, formatPrivateMessageContent(message));
+        // todo
+        // storageClient.sendTransferPrivateMessage(sender, receiverName, formatPrivateMessageContent(message));
         return 1;
     }
 
@@ -112,7 +107,9 @@ public final class PrivateMessageCommands {
         return builder.toString();
     }
 
-    public static void sendPrivateMessageLocally(MainConfiguration configuration, @Nullable Player sender, DataContainer senderContainer, @Nullable Player receiver, DataContainer receiverContainer, String content, @Nullable Pair<String, Long> originalClientAndCreationTime) {
+    public static void sendPrivateMessageLocally(MainConfiguration configuration, @Nullable Player sender, UserContainer senderContainer, @Nullable Player receiver, UserContainer receiverContainer, String content, @Nullable Pair<String, Long> originalClientAndCreationTime) {
+        // todo
+        /*
         long receive = System.currentTimeMillis();
         Placeholder[] placeholders = new Placeholder[]{
                 Placeholder.create("receiver_name", receiverContainer.identifier()::gameName),
@@ -142,7 +139,7 @@ public final class PrivateMessageCommands {
                             : config.remoteReceiverFormat).get(),
                     placeholders
             )));
-        }
+        }*/
     }
 
 }

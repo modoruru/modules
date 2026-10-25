@@ -1,46 +1,32 @@
 package fun.modoru.main.player;
 
-import fun.modoru.main.data.DataFields;
-import fun.modoru.main.data.server.AcquirableNameColor;
-import fun.modoru.main.data.user.AcquiredNameColor;
+import fun.modoru.main.musubi.ModuleMusubiClient;
+import fun.modoru.main.musubi.UserContainer;
 import fun.modoru.main.util.ColorUtil;
+import fun.modoru.musubi.builtin.data.UserDefinition;
+import fun.modoru.musubi.builtin.data.user.AcquiredNameColor;
 import org.bukkit.entity.Player;
 import org.jspecify.annotations.Nullable;
-import su.hitori.ux.storage.DataContainer;
-import su.hitori.ux.storage.Storage;
-
-import java.util.Map;
+import su.hitori.api.util.Either;
 import java.util.concurrent.CompletableFuture;
 
 public final class UsernameFormatter {
 
     private UsernameFormatter() {}
 
-    public static @Nullable String formatBlocking(Storage<DataContainer> storage, Player player) {
-        try {
-            return formatAsync(storage, player).get();
-        }
-        catch (Exception _) {
-            return null;
-        }
+    public static CompletableFuture<@Nullable String> formatAsync(ModuleMusubiClient musubiClient, Player player) {
+        return musubiClient.getUserContainer(Either.ofSecond(player.getUniqueId()), true, false)
+                .thenApply(container -> format(player.getName(), container));
     }
 
-    public static CompletableFuture<@Nullable String> formatAsync(Storage<DataContainer> storage, Player player) {
-        return storage.getServerDataContainer().thenCombine(
-                storage.getUserDataContainer(player),
-                UsernameFormatter::format
-        );
-    }
-
-    public static @Nullable String format(@Nullable DataContainer serverContainer, @Nullable DataContainer container) {
-        if(serverContainer == null || container == null) return null;
-
-        if(container.identifier().gameName().isEmpty()) return "server";
+    public static @Nullable String format(String username, @Nullable UserContainer container) {
+        if(container == null) return null;
 
         Integer firstColor = null, secondColor = null;
-        AcquiredNameColor currentColor = container.get(DataFields.CURRENT_NAME_COLOR);
+        AcquiredNameColor currentColor = container.get(UserDefinition.currentNameColor);
 
         if(currentColor != null) {
+            /*
             Map<String, AcquirableNameColor> colors = serverContainer.get(DataFields.ACQUIRABLE_NAME_COLORS);
             AcquirableNameColor color;
 
@@ -49,17 +35,17 @@ public final class UsernameFormatter {
                 if(color.secondColor().isPresent())
                     secondColor = color.secondColor().getAsInt();
             }
+            */
         }
 
-        final String gameName = container.identifier().gameName();
-        if(firstColor == null) return gameName;
-        else if(secondColor == null) return String.format("<color:#%s>%s</color>", ColorUtil.toHex(firstColor), gameName);
+        if(firstColor == null) return username;
+        else if(secondColor == null) return String.format("<color:#%s>%s</color>", ColorUtil.toHex(firstColor), username);
 
         return String.format(
                 "<gradient:#%s:#%s>%s</gradient>",
                 ColorUtil.toHex(firstColor),
                 ColorUtil.toHex(secondColor),
-                gameName
+                username
         );
     }
 

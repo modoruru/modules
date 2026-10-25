@@ -13,6 +13,7 @@ import fun.modoru.musubi.client.QuicClientSocket;
 import io.netty.channel.MultiThreadIoEventLoopGroup;
 import io.netty.channel.nio.NioIoHandler;
 import io.netty.handler.codec.quic.QuicSslContextBuilder;
+import org.bukkit.entity.Player;
 import org.jspecify.annotations.Nullable;
 import su.hitori.api.util.Either;
 
@@ -137,6 +138,10 @@ public final class ModuleMusubiClient {
         allRequests.put(requestUuid, request);
         userDataRequests.put(uuid, request);
         return request;
+    }
+
+    public CompletableFuture<@Nullable UserContainer> getUserContainer(Player player) {
+        return getUserContainer(Either.ofSecond(player.getUniqueId()), true, false);
     }
 
     public CompletableFuture<@Nullable UserContainer> getUserContainer(Either<UUID, UUID> uuidOrGameUuid, boolean requestIfNotCached, boolean persistent) {

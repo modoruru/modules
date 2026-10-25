@@ -1,11 +1,12 @@
 package fun.modoru.main.proxy;
 
+import fun.modoru.main.musubi.ModuleMusubiClient;
+import fun.modoru.main.musubi.UserContainer;
 import io.netty.buffer.Unpooled;
 import io.papermc.paper.configuration.GlobalConfiguration;
 import io.papermc.paper.threadedregions.ThreadedRegionizer;
 import io.papermc.paper.threadedregions.TickRegions;
 import fun.modoru.main.player.UsernameFormatter;
-import fun.modoru.main.storage.StorageClient;
 import fun.modoru.main.util.ArrayUtil;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minecraft.network.FriendlyByteBuf;
@@ -19,11 +20,9 @@ import org.bukkit.plugin.messaging.Messenger;
 import org.jspecify.annotations.Nullable;
 import su.hitori.api.Hitori;
 import su.hitori.api.logging.LoggerFactory;
+import su.hitori.api.util.Either;
 import su.hitori.api.util.LoggerUtil;
 import su.hitori.api.util.Text;
-import su.hitori.ux.placeholder.DynamicPlaceholder;
-import su.hitori.ux.placeholder.Placeholders;
-import su.hitori.ux.storage.DataContainer;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -31,10 +30,8 @@ import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
-@SuppressWarnings("UnstableApiUsage")
 public final class ProxyCommunication {
 
     private static final Logger LOGGER = LoggerFactory.instance().create();
@@ -44,7 +41,7 @@ public final class ProxyCommunication {
             TAB_FORMAT = "modoru:tab_format",
             FORMATTED_TAB = "modoru:formatted_tab";
 
-    private final AtomicReference<StorageClient> storageReference;
+    private final ModuleMusubiClient musubiClient;
     private final ScheduledExecutorService executorService;
     private final MiniMessage vanillaMinimessage;
 
@@ -52,7 +49,8 @@ public final class ProxyCommunication {
     private final Map<ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData>, Double>
             timePerTickCache, ticksPerSecondCache;
 
-    private final DynamicPlaceholder<Player>[] placeholders;
+    // todo
+    // private final DynamicPlaceholder<Player>[] placeholders;
 
     private boolean loaded;
     private boolean failedToLoad;
@@ -61,14 +59,16 @@ public final class ProxyCommunication {
     private @Nullable String header, footer;
     private @Nullable ScheduledFuture<?> formattedTabTask;
 
-    public ProxyCommunication(AtomicReference<StorageClient> storageReference, ScheduledExecutorService executorService) {
-        this.storageReference = storageReference;
+    public ProxyCommunication(ModuleMusubiClient musubiClient, ScheduledExecutorService executorService) {
+        this.musubiClient = musubiClient;
         this.executorService = executorService;
         this.vanillaMinimessage = MiniMessage.miniMessage();
 
         this.timePerTickCache = new HashMap<>();
         this.ticksPerSecondCache = new HashMap<>();
 
+        // todo
+        /*
         this.placeholders = ArrayUtil.create(
                 DynamicPlaceholder.create("tps", player -> {
                     double value;
@@ -110,7 +110,7 @@ public final class ProxyCommunication {
                 }),
                 DynamicPlaceholder.create("online", _ -> Bukkit.getOnlinePlayers().size()),
                 DynamicPlaceholder.create("player_name", Player::getName)
-        );
+        );*/
     }
 
     private static boolean folia() {
@@ -141,35 +141,31 @@ public final class ProxyCommunication {
     }
 
     private void sendFormattedUsernames() {
-        StorageClient storage = storageReference.get();
+        try {
+            var players = Bukkit.getOnlinePlayers();
+            if(players.isEmpty()) return;
 
-        storage.getServerDataContainer().thenAccept(serverContainer -> executorService.execute(() -> {
-            try {
-                var players = Bukkit.getOnlinePlayers();
-                if(players.isEmpty()) return;
+            Map<UUID, String> results = new HashMap<>();
+            for (Player player : players) {
+                UserContainer container = musubiClient.getUserContainer(Either.ofSecond(player.getUniqueId()), true, false).get();
+                if(container == null) continue;
 
-                Map<UUID, String> results = new HashMap<>();
-                for (Player player : players) {
-                    DataContainer container = storage.getUserDataContainer(player).get();
-                    if(container == null) continue;
+                String formattedName = UsernameFormatter.format(player.getName(), container);
+                assert formattedName != null;
 
-                    String formattedName = UsernameFormatter.format(serverContainer, container);
-                    assert formattedName != null;
-
-                    results.put(player.getUniqueId(), completeServerOnlyTags(formattedName));
-                }
-
-                FriendlyByteBuf output = new FriendlyByteBuf(Unpooled.buffer());
-                FormattedNamesPayload.encode(results, output);
-
-                byte[] resultPayload = new byte[output.readableBytes()];
-                output.readBytes(resultPayload);
-                players.iterator().next().sendPluginMessage(Hitori.instance().plugin(), FORMATTED_USERNAMES, resultPayload);
+                results.put(player.getUniqueId(), completeServerOnlyTags(formattedName));
             }
-            catch (Exception exception) {
-                LOGGER.warning(LoggerUtil.exceptionToString(exception));
-            }
-        }));
+
+            FriendlyByteBuf output = new FriendlyByteBuf(Unpooled.buffer());
+            FormattedNamesPayload.encode(results, output);
+
+            byte[] resultPayload = new byte[output.readableBytes()];
+            output.readBytes(resultPayload);
+            players.iterator().next().sendPluginMessage(Hitori.instance().plugin(), FORMATTED_USERNAMES, resultPayload);
+        }
+        catch (Exception exception) {
+            LOGGER.warning(LoggerUtil.exceptionToString(exception));
+        }
     }
 
     private String completeServerOnlyTags(String input) {
@@ -178,7 +174,7 @@ public final class ProxyCommunication {
     }
 
     private String formatHeaderOrFooter(Player player, String input) {
-        return completeServerOnlyTags(Placeholders.resolveDynamic(input, player, placeholders));
+        return completeServerOnlyTags(input); // todo
     }
 
     private void sendFormattedTab() {
