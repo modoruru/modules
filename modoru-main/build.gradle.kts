@@ -3,6 +3,7 @@ repositories {
 
 dependencies {
     paperweight.foliaDevBundle(property("paper_version") as String)
+    compileOnly("io.netty:netty-codec-native-quic:4.2.19.Final")
 }
 
 tasks {

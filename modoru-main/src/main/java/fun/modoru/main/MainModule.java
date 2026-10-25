@@ -25,7 +25,6 @@ public final class MainModule extends Module {
     private static final Key
             RESOURCEPACK_MODULE_KEY = Key.key("hitori", "resourcepack");
 
-    private final AtomicReference<StorageClient> storageReference = new AtomicReference<>();
     private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors());
     private final MainConfiguration configuration = new MainConfiguration();
 
@@ -54,7 +53,6 @@ public final class MainModule extends Module {
         proxyCommunication = new ProxyCommunication(storageReference, executorService);
 
         context.listeners().register(
-                new StorageListener(storageReference),
                 new ParticlesListener(storageReference),
                 new PrivateMessagesListener()
         );

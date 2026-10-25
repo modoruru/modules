@@ -6,7 +6,7 @@ import su.hitori.api.configuration.SectionScheme;
 public final class MainConfiguration extends SectionScheme {
 
     public final Chat chat = new Chat();
-    public final StorageClient storageClient = new StorageClient();
+    public final MusubiClient musubiClient = new MusubiClient();
     public final PackRemote packRemote = new PackRemote();
 
     public static final class Chat extends SectionScheme {
@@ -21,11 +21,22 @@ public final class MainConfiguration extends SectionScheme {
         }
     }
 
-    public static final class StorageClient extends SectionScheme {
+    public static final class MusubiClient extends SectionScheme {
         public final Field<String>
-                address = Field.create("ws://localhost:80"),
-                user = Field.create("root"),
-                password = Field.create("root");
+                address = Field.create("localhost"),
+                identifier = Field.create("root"),
+                authorization = Field.create("");
+
+        public final Field<Integer> port = Field.create(8080);
+
+        public final TLS tls = new TLS();
+
+        public static final class TLS extends SectionScheme {
+            public final Field<String>
+                    trustManager = Field.create("ca.crt.pem"),
+                    key = Field.create("client.key.pem"),
+                    certificate = Field.create("client.crt.pem");
+        }
     }
 
     public static final class PackRemote extends SectionScheme {

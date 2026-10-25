@@ -7,11 +7,14 @@ import fun.modoru.musubi.builtin.packets.server.PushUserPropertyPacket;
 import fun.modoru.musubi.peer.MusubiConnection;
 import su.hitori.api.util.UnsafeUtil;
 
+import java.util.concurrent.ScheduledFuture;
+
 public final class UserContainer {
 
     private final Identifier identifier;
     private final MusubiConnection connection;
-    private final Object[] values;
+    final Object[] values;
+    boolean closed;
 
     UserContainer(Identifier identifier, MusubiConnection connection) {
         this.identifier = identifier;
@@ -23,22 +26,43 @@ public final class UserContainer {
         return identifier;
     }
 
+    public boolean closed() {
+        return closed;
+    }
+
     private void verifyProperty(UserProperty<?> property) {
         if(property != UserDefinition.byId(property.id()))
             throw new IllegalArgumentException();
     }
 
     public <E> E get(UserProperty<E> property) {
+        if(closed) throw new IllegalStateException("The container is already closed.");
+
         verifyProperty(property);
+
         return UnsafeUtil.cast(values[property.id()]);
     }
 
     public <E> void set(UserProperty<E> property, E value) {
+        if(closed) throw new IllegalStateException("The container is already closed.");
+
         verifyProperty(property);
 
         connection.send(PushUserPropertyPacket.DEFINITION, new PushUserPropertyPacket(identifier.uuid(), property.id(), value));
-
         values[property.id()] = value;
+    }
+
+    static final class Cached {
+
+        final UserContainer container;
+        long timeout;
+        ScheduledFuture<?> removalTask;
+
+        public Cached(UserContainer container, long timeout) {
+            this.container = container;
+            this.timeout = timeout;
+        }
+
     }
 
 }
