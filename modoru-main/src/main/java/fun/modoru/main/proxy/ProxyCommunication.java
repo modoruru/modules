@@ -2,25 +2,20 @@ package fun.modoru.main.proxy;
 
 import fun.modoru.main.musubi.ModuleMusubiClient;
 import fun.modoru.main.musubi.UserContainer;
+import fun.modoru.main.player.UsernameFormatter;
 import io.netty.buffer.Unpooled;
 import io.papermc.paper.configuration.GlobalConfiguration;
 import io.papermc.paper.threadedregions.ThreadedRegionizer;
 import io.papermc.paper.threadedregions.TickRegions;
-import fun.modoru.main.player.UsernameFormatter;
-import fun.modoru.main.util.ArrayUtil;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.server.level.ServerLevel;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.craftbukkit.CraftWorld;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.messaging.Messenger;
 import org.jspecify.annotations.Nullable;
 import su.hitori.api.Hitori;
 import su.hitori.api.logging.LoggerFactory;
-import su.hitori.api.util.Either;
 import su.hitori.api.util.LoggerUtil;
 import su.hitori.api.util.Text;
 
@@ -147,7 +142,7 @@ public final class ProxyCommunication {
 
             Map<UUID, String> results = new HashMap<>();
             for (Player player : players) {
-                UserContainer container = musubiClient.getUserContainer(Either.ofSecond(player.getUniqueId()), true, false).get();
+                UserContainer container = musubiClient.getUserContainer(null, player.getUniqueId(), null, true, false).get();
                 if(container == null) continue;
 
                 String formattedName = UsernameFormatter.format(player.getName(), container);

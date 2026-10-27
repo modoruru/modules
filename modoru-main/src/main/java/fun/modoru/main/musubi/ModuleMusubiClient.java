@@ -3,6 +3,7 @@ package fun.modoru.main.musubi;
 import fun.modoru.main.MainConfiguration;
 import fun.modoru.musubi.BuiltInProtocol;
 import fun.modoru.musubi.Protocol;
+import fun.modoru.musubi.builtin.data.UserDefinition;
 import fun.modoru.musubi.builtin.data.user.Identifier;
 import fun.modoru.musubi.builtin.packets.client.*;
 import fun.modoru.musubi.builtin.packets.server.RequestCompleteIdentifierPacket;
@@ -15,7 +16,7 @@ import io.netty.channel.nio.NioIoHandler;
 import io.netty.handler.codec.quic.QuicSslContextBuilder;
 import org.bukkit.entity.Player;
 import org.jspecify.annotations.Nullable;
-import su.hitori.api.util.Either;
+import su.hitori.api.Pair;
 
 import java.io.File;
 import java.net.InetSocketAddress;
@@ -38,6 +39,7 @@ public final class ModuleMusubiClient {
     final ConcurrentMap<UUID, Request.CompleteIdentifierRequest>
             completeIdentifierFromUuidRequests,
             completeIdentifierFromGameUuidRequests;
+    final ConcurrentMap<String, Request.CompleteIdentifierRequest> completeIdentifierFromGameNameRequests;
 
     final ConcurrentMap<UUID, UserContainer.Cached> userContainers, userContainersFromGameUuid;
 
@@ -80,6 +82,7 @@ public final class ModuleMusubiClient {
         this.userDataRequests = new ConcurrentHashMap<>();
         this.completeIdentifierFromUuidRequests = new ConcurrentHashMap<>();
         this.completeIdentifierFromGameUuidRequests = new ConcurrentHashMap<>();
+        this.completeIdentifierFromGameNameRequests = new ConcurrentHashMap<>();
 
         this.userContainers = new ConcurrentHashMap<>();
         this.userContainersFromGameUuid = new ConcurrentHashMap<>();
@@ -107,28 +110,29 @@ public final class ModuleMusubiClient {
     }
 
     // Doesn't check for the cached identifier
-    Request<Identifier> makeCompleteIdentifierRequest(@Nullable UUID uuid, @Nullable UUID gameUuid) {
-        if((uuid == null) == (gameUuid == null)) throw new IllegalArgumentException("exactly one argument should be null");
+    Pair<Request<Identifier>, Boolean> makeCompleteIdentifierRequest(@Nullable UUID uuid, @Nullable UUID gameUuid, @Nullable String gameName) {
+        if((uuid == null) == (gameUuid == null) == (gameName == null)) throw new IllegalArgumentException("at lest one argument should be non-null");
 
         Request.CompleteIdentifierRequest request;
         if(uuid != null) request = completeIdentifierFromUuidRequests.get(uuid);
-        else request = completeIdentifierFromGameUuidRequests.get(gameUuid);
-        if(request != null) return request;
+        else if(gameUuid != null) request = completeIdentifierFromGameUuidRequests.get(gameUuid);
+        else request = completeIdentifierFromGameNameRequests.get(gameName);
+        if(request != null) return Pair.of(request, true);
 
         UUID requestUuid = UUID.randomUUID();
         request = new Request.CompleteIdentifierRequest(requestUuid, new CompletableFuture<>(), uuid, gameUuid);
         assert musubiClient.clientConnection != null;
-        musubiClient.clientConnection.send(RequestCompleteIdentifierPacket.DEFINITION, new RequestCompleteIdentifierPacket(requestUuid, uuid, gameUuid));
+        musubiClient.clientConnection.send(RequestCompleteIdentifierPacket.DEFINITION, new RequestCompleteIdentifierPacket(requestUuid, uuid, gameUuid, gameName));
 
         allRequests.put(requestUuid, request);
         if(uuid != null) completeIdentifierFromUuidRequests.put(uuid, request);
         else completeIdentifierFromGameUuidRequests.put(gameUuid, request);
-        return request;
+        return Pair.of(request, false);
     }
 
-    Request<UserContainer> makeUserDataRequest(UUID uuid, long containerTimeout) {
+    Pair<Request<UserContainer>, Boolean> makeUserDataRequest(UUID uuid, long containerTimeout) {
         Request.UserDataRequest request = userDataRequests.get(uuid);
-        if(request != null) return request;
+        if(request != null) return Pair.of(request, true);
 
         UUID requestUuid = UUID.randomUUID();
         request = new Request.UserDataRequest(requestUuid, new CompletableFuture<>(), uuid, containerTimeout);
@@ -137,17 +141,19 @@ public final class ModuleMusubiClient {
 
         allRequests.put(requestUuid, request);
         userDataRequests.put(uuid, request);
-        return request;
+        return Pair.of(request, false);
     }
 
     public CompletableFuture<@Nullable UserContainer> getUserContainer(Player player) {
-        return getUserContainer(Either.ofSecond(player.getUniqueId()), true, false);
+        return getUserContainer(null, player.getUniqueId(), player.getName(), true, false);
     }
 
-    public CompletableFuture<@Nullable UserContainer> getUserContainer(Either<UUID, UUID> uuidOrGameUuid, boolean requestIfNotCached, boolean persistent) {
-        UserContainer.Cached cached;
-        if(uuidOrGameUuid.firstPresent()) cached = userContainers.get(uuidOrGameUuid.first());
-        else cached = userContainersFromGameUuid.get(uuidOrGameUuid.second());
+    public CompletableFuture<@Nullable UserContainer> getUserContainer(@Nullable UUID uuid, @Nullable UUID gameUuid, @Nullable String gameName, boolean requestIfNotCached, boolean persistent) {
+        UserContainer.Cached cached = null;
+        if(uuid != null) cached = userContainers.get(uuid);
+        else if(gameUuid != null) cached = userContainersFromGameUuid.get(gameUuid);
+        else if(gameName == null) return CompletableFuture.completedFuture(null);
+
         if(cached != null) {
             if(cached.timeout > 0 && persistent) cached.timeout = 0;
 
@@ -157,23 +163,35 @@ public final class ModuleMusubiClient {
 
         if(!requestIfNotCached) return CompletableFuture.completedFuture(null);
 
-        CompletableFuture<UserContainer> request;
-        if(uuidOrGameUuid.firstPresent()) request = makeUserDataRequest(uuidOrGameUuid.first(), persistent ? 0 : DEFAULT_TIMEOUT).future();
-        else request = makeCompleteIdentifierRequest(null, uuidOrGameUuid.second())
-                .future()
-                .thenCompose(identifier -> {
-                    if(identifier == null) return CompletableFuture.completedFuture(null);
+        CompletableFuture<UserContainer> future;
+        boolean cachedRequest;
+        if(uuid != null) {
+            var request = makeUserDataRequest(uuid, persistent ? 0 : DEFAULT_TIMEOUT);
+            future = request.first().future();
+            cachedRequest = request.second();
+        }
+        else {
+            var request = makeCompleteIdentifierRequest(null, gameUuid, gameName);
+            future = request.first()
+                    .future()
+                    .thenCompose(identifier -> {
+                        if (identifier == null) return CompletableFuture.completedFuture(null);
 
-                    return makeUserDataRequest(identifier.uuid(), persistent ? 0 : DEFAULT_TIMEOUT).future();
-                });
+                        return makeUserDataRequest(identifier.uuid(), persistent ? 0 : DEFAULT_TIMEOUT).first().future();
+                    });
+            cachedRequest = request.second();
+        }
 
-        request.thenAccept(container -> {
-            if(container == null) return;
+        if(!cachedRequest) {
+            future.thenAccept(container -> {
+                if(container == null) return;
 
-            musubiClient.clientConnection.send(UserTrackingPacket.DEFINITION, new UserTrackingPacket(container.identifier().uuid(), true));
-        });
+                if(gameName != null) container.set(UserDefinition.lastKnownUsername, gameName);
+                musubiClient.clientConnection.send(UserTrackingPacket.DEFINITION, new UserTrackingPacket(container.identifier().uuid(), true));
+            });
+        }
 
-        return request;
+        return future;
     }
 
     void close(UserContainer.Cached cached) {

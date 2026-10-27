@@ -7,7 +7,7 @@ import fun.modoru.musubi.builtin.data.UserDefinition;
 import fun.modoru.musubi.builtin.data.user.AcquiredNameColor;
 import org.bukkit.entity.Player;
 import org.jspecify.annotations.Nullable;
-import su.hitori.api.util.Either;
+
 import java.util.concurrent.CompletableFuture;
 
 public final class UsernameFormatter {
@@ -15,7 +15,7 @@ public final class UsernameFormatter {
     private UsernameFormatter() {}
 
     public static CompletableFuture<@Nullable String> formatAsync(ModuleMusubiClient musubiClient, Player player) {
-        return musubiClient.getUserContainer(Either.ofSecond(player.getUniqueId()), true, false)
+        return musubiClient.getUserContainer(null, player.getUniqueId(), null, true, false)
                 .thenApply(container -> format(player.getName(), container));
     }
 
