@@ -1,8 +1,8 @@
 package fun.modoru.survival.mechanics.misc;
 
+import fun.modoru.survival.SurvivalConfiguration;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.ItemEnchantments;
-import fun.modoru.survival.SurvivalConfiguration;
 import net.minecraft.util.RandomSource;
 import org.bukkit.Material;
 import org.bukkit.craftbukkit.entity.CraftWarden;
@@ -24,7 +24,6 @@ public final class WardenDropListener implements Listener {
         this.configuration = configuration;
     }
 
-    @SuppressWarnings("UnstableApiUsage")
     @EventHandler
     private void onEntityDeath(EntityDeathEvent event) {
         Entity entity = event.getEntity();

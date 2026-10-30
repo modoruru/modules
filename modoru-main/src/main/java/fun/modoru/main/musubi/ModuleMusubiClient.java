@@ -3,45 +3,58 @@ package fun.modoru.main.musubi;
 import fun.modoru.main.MainConfiguration;
 import fun.modoru.musubi.BuiltInProtocol;
 import fun.modoru.musubi.Protocol;
-import fun.modoru.musubi.builtin.data.UserDefinition;
 import fun.modoru.musubi.builtin.data.user.Identifier;
+import fun.modoru.musubi.builtin.packets.WaitingPacket;
 import fun.modoru.musubi.builtin.packets.client.*;
 import fun.modoru.musubi.builtin.packets.server.RequestCompleteIdentifierPacket;
 import fun.modoru.musubi.builtin.packets.server.RequestUserDataPacket;
-import fun.modoru.musubi.builtin.packets.server.UserTrackingPacket;
+import fun.modoru.musubi.builtin.packets.server.UserTrackingStatusPacket;
 import fun.modoru.musubi.client.MusubiClient;
 import fun.modoru.musubi.client.QuicClientSocket;
+import fun.modoru.musubi.packet.PacketDefinition;
 import io.netty.channel.MultiThreadIoEventLoopGroup;
 import io.netty.channel.nio.NioIoHandler;
 import io.netty.handler.codec.quic.QuicSslContextBuilder;
 import org.bukkit.entity.Player;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import su.hitori.api.Pair;
 
 import java.io.File;
 import java.net.InetSocketAddress;
+import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static fun.modoru.main.musubi.ClientPacketHandler.prepare;
 
 public final class ModuleMusubiClient {
 
-    private static final long DEFAULT_TIMEOUT = 30_000;
+    private static final int
+            VERBOSE = 0,
+            NECESSARY = 1;
+
+    private static final long DEFAULT_TIMEOUT = 5_000;
 
     private final MainConfiguration configuration;
     private final ScheduledExecutorService scheduledExecutorService;
 
     private final MusubiClient musubiClient;
 
-    final ConcurrentMap<UUID, Request<?>> allRequests;
-    final ConcurrentMap<UUID, Request.UserDataRequest> userDataRequests;
-    final ConcurrentMap<UUID, Request.CompleteIdentifierRequest>
+    final Map<UUID, Request<?>> allRequests;
+    final Map<UUID, Request.UserDataRequest> userDataRequests;
+    final Map<UUID, Request.CompleteIdentifierRequest>
             completeIdentifierFromUuidRequests,
             completeIdentifierFromGameUuidRequests;
-    final ConcurrentMap<String, Request.CompleteIdentifierRequest> completeIdentifierFromGameNameRequests;
+    final Map<String, Request.CompleteIdentifierRequest> completeIdentifierFromGameNameRequests;
+    final Map<UUID, Request.UserWarningsRequest> userWarningsRequests;
 
-    final ConcurrentMap<UUID, UserContainer.Cached> userContainers, userContainersFromGameUuid;
+    final Map<UUID, CompletableFuture<Boolean>> waitingPackets;
+
+    final Map<UUID, UserContainer.Cached> userContainers, userContainersFromGameUuid;
 
     public ModuleMusubiClient(File moduleFolder, MainConfiguration configuration, ScheduledExecutorService scheduledExecutorService) {
         this.configuration = configuration;
@@ -54,6 +67,12 @@ public final class ModuleMusubiClient {
                 .defineHandler(CompleteIdentifierPacket.DEFINITION, prepare(handler::completeIdentifier))
                 .defineHandler(RequestFailedPacket.DEFINITION, prepare(handler::requestFailed))
                 .defineHandler(BroadcastPlayerMessagePacket.DEFINITION, prepare(handler::broadcastPlayerMessage))
+                .defineHandler(UserWarningsPacket.DEFINITION, prepare(handler::userWarnings))
+                .defineHandler(TransferPrivatePlayerMessagePacket.DEFINITION, prepare(handler::transferPrivatePlayerMessage))
+                .defineHandler(TransferPrivatePlayerMessageResponsePacket.DEFINITION, prepare(handler::transferPrivatePlayerMessageResponse))
+                .defineHandler(ConfirmationPacket.DEFINITION, prepare(handler::confirmation))
+                .defineHandler(GroupPacket.DEFINITION, prepare(handler::group))
+                .defineHandler(TrackingUpdateGroupPacket.DEFINITION, prepare(handler::trackingUpdateGroup))
                 .build();
 
         File tlsFolder = new File(moduleFolder, "tls/");
@@ -83,6 +102,9 @@ public final class ModuleMusubiClient {
         this.completeIdentifierFromUuidRequests = new ConcurrentHashMap<>();
         this.completeIdentifierFromGameUuidRequests = new ConcurrentHashMap<>();
         this.completeIdentifierFromGameNameRequests = new ConcurrentHashMap<>();
+        this.userWarningsRequests = new ConcurrentHashMap<>();
+
+        this.waitingPackets = new ConcurrentHashMap<>();
 
         this.userContainers = new ConcurrentHashMap<>();
         this.userContainersFromGameUuid = new ConcurrentHashMap<>();
@@ -93,6 +115,22 @@ public final class ModuleMusubiClient {
 
         if(cached.timeout <= 0) cached.removalTask = null;
         else cached.removalTask = scheduledExecutorService.schedule(() -> close(cached), cached.timeout, TimeUnit.MILLISECONDS);
+    }
+
+    private <T extends Record & WaitingPacket> CompletableFuture<Boolean> sendWaitingPacket(PacketDefinition<@NonNull T> definition, T waitingPacket) {
+        CompletableFuture<Boolean> future = new CompletableFuture<Boolean>().orTimeout(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS);
+        musubiClient.clientConnection.send(definition, waitingPacket);
+        waitingPackets.put(waitingPacket.waitingUuid(), future);
+        return future;
+    }
+
+    private <T extends Record & WaitingPacket> boolean sendWaitingPacketBlocking(PacketDefinition<@NonNull T> definition, T waitingPacket) {
+        try {
+            return sendWaitingPacket(definition, waitingPacket).get();
+        }
+        catch (Throwable throwable) {
+            throw new RuntimeException(throwable);
+        }
     }
 
     UserContainer createAndCacheContainer(Identifier identifier, Object[] propertiesValues, long timeout) {
@@ -120,9 +158,11 @@ public final class ModuleMusubiClient {
         if(request != null) return Pair.of(request, true);
 
         UUID requestUuid = UUID.randomUUID();
-        request = new Request.CompleteIdentifierRequest(requestUuid, new CompletableFuture<>(), uuid, gameUuid);
+        request = new Request.CompleteIdentifierRequest(requestUuid, new CompletableFuture<Identifier>().orTimeout(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS), uuid, gameUuid);
         assert musubiClient.clientConnection != null;
         musubiClient.clientConnection.send(RequestCompleteIdentifierPacket.DEFINITION, new RequestCompleteIdentifierPacket(requestUuid, uuid, gameUuid, gameName));
+
+        debug(NECESSARY, "sent request for completing identifier for uuid: %s, gameUuid: %s, gameName: %s with uuid %s", uuid, gameUuid, gameName, requestUuid);
 
         allRequests.put(requestUuid, request);
         if(uuid != null) completeIdentifierFromUuidRequests.put(uuid, request);
@@ -135,9 +175,11 @@ public final class ModuleMusubiClient {
         if(request != null) return Pair.of(request, true);
 
         UUID requestUuid = UUID.randomUUID();
-        request = new Request.UserDataRequest(requestUuid, new CompletableFuture<>(), uuid, containerTimeout);
+        request = new Request.UserDataRequest(requestUuid, new CompletableFuture<UserContainer>().orTimeout(DEFAULT_TIMEOUT * 2, TimeUnit.MILLISECONDS), uuid, containerTimeout);
         assert musubiClient.clientConnection != null;
         musubiClient.clientConnection.send(RequestUserDataPacket.DEFINITION, new RequestUserDataPacket(requestUuid, uuid));
+
+        debug(NECESSARY, "sent request for %s's container with uuid %s", uuid, requestUuid);
 
         allRequests.put(requestUuid, request);
         userDataRequests.put(uuid, request);
@@ -163,6 +205,8 @@ public final class ModuleMusubiClient {
 
         if(!requestIfNotCached) return CompletableFuture.completedFuture(null);
 
+        debug(VERBOSE, "requested container for uuid: %s, gameUuid: %s, gameName: %s with parameters: requestIfNotCached: %s, persistent: %s", uuid, gameUuid, gameName, requestIfNotCached, persistent);
+
         CompletableFuture<UserContainer> future;
         boolean cachedRequest;
         if(uuid != null) {
@@ -183,15 +227,27 @@ public final class ModuleMusubiClient {
         }
 
         if(!cachedRequest) {
-            future.thenAccept(container -> {
-                if(container == null) return;
+            future = future.thenApply(container -> {
+                debug(NECESSARY, "received null for uuid: %s, gameUuid: %s, gameName: %s", uuid, gameUuid, gameName);
+                if(container == null) return null;
 
-                if(gameName != null) container.set(UserDefinition.lastKnownUsername, gameName);
-                musubiClient.clientConnection.send(UserTrackingPacket.DEFINITION, new UserTrackingPacket(container.identifier().uuid(), true));
+                debug(NECESSARY, "received container for %s > requesting tracking", container.identifier().uuid());
+                if(sendWaitingPacketBlocking(UserTrackingStatusPacket.DEFINITION, new UserTrackingStatusPacket(UUID.randomUUID(), container.identifier().uuid(), true))) {
+                    debug(NECESSARY, "tracking on %s approved > finished", container.identifier().uuid());
+                    return container;
+                }
+
+                debug(NECESSARY, "failed to approve that tracking was received for %s", container.identifier().uuid());
+
+                return null;
             });
         }
 
         return future;
+    }
+
+    private void debug(int level, String format, Object... args) {
+
     }
 
     void close(UserContainer.Cached cached) {
@@ -203,7 +259,7 @@ public final class ModuleMusubiClient {
         userContainersFromGameUuid.remove(identifier.gameUuid());
 
         assert musubiClient.clientConnection != null;
-        musubiClient.clientConnection.send(UserTrackingPacket.DEFINITION, new UserTrackingPacket(identifier.uuid(), false));
+        sendWaitingPacket(UserTrackingStatusPacket.DEFINITION, new UserTrackingStatusPacket(UUID.randomUUID(), identifier.uuid(), false));
     }
 
 }

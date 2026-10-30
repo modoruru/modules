@@ -52,6 +52,10 @@ public final class UserContainer {
         values[property.id()] = value;
     }
 
+    void setFlat(int propertyId, Object value) {
+        values[propertyId] = value;
+    }
+
     static final class Cached {
 
         final UserContainer container;
