@@ -22,7 +22,6 @@ import java.io.File;
 import java.util.*;
 import java.util.function.Predicate;
 
-@SuppressWarnings("UnstableApiUsage")
 public final class UniqueItems {
 
     private static final EnumSet<Material> TRACKED_ITEMS_TYPES = EnumSet.of(

@@ -4,7 +4,7 @@ import fun.modoru.main.musubi.ModuleMusubiClient;
 import fun.modoru.main.musubi.UserContainer;
 import fun.modoru.main.util.ColorUtil;
 import fun.modoru.musubi.builtin.data.UserDefinition;
-import fun.modoru.musubi.builtin.data.user.AcquiredNameColor;
+import fun.modoru.musubi.builtin.data.user.NameColor;
 import org.bukkit.entity.Player;
 import org.jspecify.annotations.Nullable;
 
@@ -23,19 +23,12 @@ public final class UsernameFormatter {
         if(container == null) return null;
 
         Integer firstColor = null, secondColor = null;
-        AcquiredNameColor currentColor = container.get(UserDefinition.currentNameColor);
+        NameColor currentColor = container.get(UserDefinition.currentNameColor);
 
         if(currentColor != null) {
-            /*
-            Map<String, AcquirableNameColor> colors = serverContainer.get(DataFields.ACQUIRABLE_NAME_COLORS);
-            AcquirableNameColor color;
-
-            if(colors != null && (color = colors.get(currentColor.id())) != null) {
-                firstColor = color.firstColor();
-                if(color.secondColor().isPresent())
-                    secondColor = color.secondColor().getAsInt();
-            }
-            */
+            firstColor = currentColor.firstColor();
+            if(currentColor.secondColor().isPresent())
+                secondColor = currentColor.secondColor().getAsInt();
         }
 
         if(firstColor == null) return username;

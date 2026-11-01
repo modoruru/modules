@@ -20,6 +20,10 @@ tasks {
         archiveClassifier.set("")
     }
 
+    compileJava {
+        dependsOn(project(":modoru-main").tasks["shadowJar"])
+    }
+
     build {
         dependsOn(shadowJar)
     }

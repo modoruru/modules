@@ -5,6 +5,7 @@ import fun.modoru.musubi.builtin.data.UserProperty;
 import fun.modoru.musubi.builtin.data.user.Identifier;
 import fun.modoru.musubi.builtin.packets.server.PushUserPropertyPacket;
 import fun.modoru.musubi.peer.MusubiConnection;
+import org.jspecify.annotations.Nullable;
 import su.hitori.api.util.UnsafeUtil;
 
 import java.util.concurrent.ScheduledFuture;
@@ -13,7 +14,7 @@ public final class UserContainer {
 
     private final Identifier identifier;
     private final MusubiConnection connection;
-    final Object[] values;
+    final @Nullable Object[] values;
     boolean closed;
 
     UserContainer(Identifier identifier, MusubiConnection connection) {
@@ -35,15 +36,27 @@ public final class UserContainer {
             throw new IllegalArgumentException();
     }
 
-    public <E> E get(UserProperty<E> property) {
+    public <E> @Nullable E get(UserProperty<E> property) {
         if(closed) throw new IllegalStateException("The container is already closed.");
 
         verifyProperty(property);
 
-        return UnsafeUtil.cast(values[property.id()]);
+        Object value = values[property.id()];
+        if(value == null) return property.defaultValue();
+
+        return UnsafeUtil.cast(value);
     }
 
-    public <E> void set(UserProperty<E> property, E value) {
+    /**
+     * current value -> property default value -> argument default
+     */
+    public <E> E getOrDefault(UserProperty<E> property, E defaultvalue) {
+        E value = get(property);
+        if(value == null) return defaultvalue;
+        return value;
+    }
+
+    public <E> void set(UserProperty<E> property, @Nullable E value) {
         if(closed) throw new IllegalStateException("The container is already closed.");
 
         verifyProperty(property);
@@ -60,7 +73,7 @@ public final class UserContainer {
 
         final UserContainer container;
         long timeout;
-        ScheduledFuture<?> removalTask;
+        @Nullable ScheduledFuture<?> removalTask;
 
         public Cached(UserContainer container, long timeout) {
             this.container = container;

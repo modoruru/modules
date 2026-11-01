@@ -3,6 +3,7 @@ package fun.modoru.main.musubi;
 import fun.modoru.main.MainConfiguration;
 import fun.modoru.musubi.BuiltInProtocol;
 import fun.modoru.musubi.Protocol;
+import fun.modoru.musubi.builtin.data.server.Group;
 import fun.modoru.musubi.builtin.data.user.Identifier;
 import fun.modoru.musubi.builtin.packets.WaitingPacket;
 import fun.modoru.musubi.builtin.packets.client.*;
@@ -16,7 +17,6 @@ import io.netty.channel.MultiThreadIoEventLoopGroup;
 import io.netty.channel.nio.NioIoHandler;
 import io.netty.handler.codec.quic.QuicSslContextBuilder;
 import org.bukkit.entity.Player;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import su.hitori.api.Pair;
 
@@ -117,14 +117,15 @@ public final class ModuleMusubiClient {
         else cached.removalTask = scheduledExecutorService.schedule(() -> close(cached), cached.timeout, TimeUnit.MILLISECONDS);
     }
 
-    private <T extends Record & WaitingPacket> CompletableFuture<Boolean> sendWaitingPacket(PacketDefinition<@NonNull T> definition, T waitingPacket) {
+    private <T extends Record & WaitingPacket> CompletableFuture<Boolean> sendWaitingPacket(PacketDefinition<T> definition, T waitingPacket) {
         CompletableFuture<Boolean> future = new CompletableFuture<Boolean>().orTimeout(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS);
+        assert musubiClient.clientConnection != null;
         musubiClient.clientConnection.send(definition, waitingPacket);
         waitingPackets.put(waitingPacket.waitingUuid(), future);
         return future;
     }
 
-    private <T extends Record & WaitingPacket> boolean sendWaitingPacketBlocking(PacketDefinition<@NonNull T> definition, T waitingPacket) {
+    private <T extends Record & WaitingPacket> boolean sendWaitingPacketBlocking(PacketDefinition<T> definition, T waitingPacket) {
         try {
             return sendWaitingPacket(definition, waitingPacket).get();
         }
@@ -166,7 +167,10 @@ public final class ModuleMusubiClient {
 
         allRequests.put(requestUuid, request);
         if(uuid != null) completeIdentifierFromUuidRequests.put(uuid, request);
-        else completeIdentifierFromGameUuidRequests.put(gameUuid, request);
+        else {
+            assert gameUuid != null;
+            completeIdentifierFromGameUuidRequests.put(gameUuid, request);
+        }
         return Pair.of(request, false);
     }
 
@@ -207,7 +211,7 @@ public final class ModuleMusubiClient {
 
         debug(VERBOSE, "requested container for uuid: %s, gameUuid: %s, gameName: %s with parameters: requestIfNotCached: %s, persistent: %s", uuid, gameUuid, gameName, requestIfNotCached, persistent);
 
-        CompletableFuture<UserContainer> future;
+        CompletableFuture<@Nullable UserContainer> future;
         boolean cachedRequest;
         if(uuid != null) {
             var request = makeUserDataRequest(uuid, persistent ? 0 : DEFAULT_TIMEOUT);
@@ -246,7 +250,11 @@ public final class ModuleMusubiClient {
         return future;
     }
 
-    private void debug(int level, String format, Object... args) {
+    public CompletableFuture<@Nullable Group> getGroup(UUID groupUuid) {
+        return CompletableFuture.completedFuture(null); // todo
+    }
+
+    private void debug(int level, String format, @Nullable Object... args) {
 
     }
 

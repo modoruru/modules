@@ -1,12 +1,26 @@
-repositories {
+plugins {
+    id("com.gradleup.shadow").version("9.0.0-beta4")
 }
 
 dependencies {
     paperweight.foliaDevBundle(property("paper_version") as String)
     compileOnly("io.netty:netty-codec-native-quic:4.2.19.Final")
+    implementation("fun.lofe:stop-spying-on-your-players-messages:1.0.0+26.3")
 }
 
 tasks {
+    jar {
+        enabled = false
+    }
+
+    shadowJar {
+        archiveClassifier = ""
+    }
+
+    build {
+        dependsOn(shadowJar)
+    }
+
     processResources {
         filesMatching("hitori.module.json") {
             expand(
