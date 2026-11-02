@@ -11,29 +11,33 @@ import fun.modoru.musubi.builtin.packets.client.*;
 import fun.modoru.musubi.builtin.packets.server.RequestCompleteIdentifierPacket;
 import fun.modoru.musubi.builtin.packets.server.RequestUserDataPacket;
 import fun.modoru.musubi.builtin.packets.server.UserTrackingStatusPacket;
+import fun.modoru.musubi.client.CloseReason;
 import fun.modoru.musubi.client.MusubiClient;
 import fun.modoru.musubi.client.QuicClientSocket;
 import fun.modoru.musubi.packet.PacketDefinition;
+import fun.modoru.musubi.server.QuicServerSocket;
 import io.netty.channel.MultiThreadIoEventLoopGroup;
 import io.netty.channel.nio.NioIoHandler;
 import io.netty.handler.codec.quic.QuicSslContextBuilder;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 import su.hitori.api.Pair;
+import su.hitori.api.logging.LoggerFactory;
 
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.logging.Logger;
 
 import static fun.modoru.main.musubi.ClientPacketHandler.prepare;
 
 public final class ModuleMusubiClient {
+
+    private static final Logger LOGGER = LoggerFactory.instance().create();
 
     private static final int
             VERBOSE = 0,
@@ -91,6 +95,8 @@ public final class ModuleMusubiClient {
                                         null,
                                         new File(tlsFolder, musubiClientConfig.tls.certificate.get())
                                 )
+                                .applicationProtocols(QuicServerSocket.PROTOCOL_NAME)
+                                .endpointIdentificationAlgorithm(null) // todo: SHOULD NOT REMAIN HERE. WAS ADDED FOR LOCAL TESTING.
                                 .build(),
                         new MultiThreadIoEventLoopGroup(scheduledExecutorService, NioIoHandler.newFactory()),
                         new InetSocketAddress(musubiClientConfig.address.get(), musubiClientConfig.port.get())
@@ -112,6 +118,36 @@ public final class ModuleMusubiClient {
         this.userContainersFromGameUuid = new ConcurrentHashMap<>();
     }
 
+    public void startAsync() {
+        try {
+            scheduledExecutorService.execute(() -> {
+                try {
+                    CloseReason closeReason = musubiClient.awaitClose();
+                    LOGGER.warning("Closed: " + closeReason.type().name());
+                    stop();
+                }
+                catch (InterruptedException | ExecutionException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            musubiClient.connect();
+            musubiClient.awaitAuthorization();
+        }
+        catch (Throwable throwable) {
+            throw new RuntimeException(throwable);
+        }
+    }
+
+    public void stop() {
+        try {
+            musubiClient.close("Stopping");
+        }
+        finally {
+            Bukkit.getOnlinePlayers().forEach(Player::kick);
+        }
+    }
+
     private void renewRemovalTask(UserContainer.Cached cached) {
         if(cached.removalTask != null) cached.removalTask.cancel(false);
 
@@ -120,7 +156,8 @@ public final class ModuleMusubiClient {
     }
 
     public <T extends Record & WaitingPacket> CompletableFuture<Boolean> sendWaitingPacket(PacketDefinition<T> definition, T waitingPacket) {
-        CompletableFuture<Boolean> future = new CompletableFuture<Boolean>().orTimeout(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS);
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        future.orTimeout(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS);
         assert musubiClient.clientConnection != null;
         musubiClient.clientConnection.send(definition, waitingPacket);
         waitingPackets.put(waitingPacket.waitingUuid(), future);
@@ -152,7 +189,7 @@ public final class ModuleMusubiClient {
 
     // Doesn't check for the cached identifier
     Pair<Request<Identifier>, Boolean> makeCompleteIdentifierRequest(@Nullable UUID uuid, @Nullable UUID gameUuid, @Nullable String gameName) {
-        if((uuid == null) == (gameUuid == null) == (gameName == null)) throw new IllegalArgumentException("at lest one argument should be non-null");
+        if(gameUuid == null && gameName == null) throw new IllegalArgumentException("at least one argument should be non-null");
 
         Request.CompleteIdentifierRequest request;
         if(uuid != null) request = completeIdentifierFromUuidRequests.get(uuid);
@@ -161,7 +198,8 @@ public final class ModuleMusubiClient {
         if(request != null) return Pair.of(request, true);
 
         UUID requestUuid = UUID.randomUUID();
-        request = new Request.CompleteIdentifierRequest(requestUuid, new CompletableFuture<Identifier>().orTimeout(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS), uuid, gameUuid);
+        request = new Request.CompleteIdentifierRequest(requestUuid, new CompletableFuture<>(), uuid, gameUuid);
+        request.future().orTimeout(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS);
         assert musubiClient.clientConnection != null;
         musubiClient.clientConnection.send(RequestCompleteIdentifierPacket.DEFINITION, new RequestCompleteIdentifierPacket(requestUuid, uuid, gameUuid, gameName));
 
@@ -181,7 +219,8 @@ public final class ModuleMusubiClient {
         if(request != null) return Pair.of(request, true);
 
         UUID requestUuid = UUID.randomUUID();
-        request = new Request.UserDataRequest(requestUuid, new CompletableFuture<UserContainer>().orTimeout(DEFAULT_TIMEOUT * 2, TimeUnit.MILLISECONDS), uuid, containerTimeout);
+        request = new Request.UserDataRequest(requestUuid, new CompletableFuture<>(), uuid, containerTimeout);
+        request.future().orTimeout(DEFAULT_TIMEOUT * 2, TimeUnit.MILLISECONDS);
         assert musubiClient.clientConnection != null;
         musubiClient.clientConnection.send(RequestUserDataPacket.DEFINITION, new RequestUserDataPacket(requestUuid, uuid));
 
@@ -251,19 +290,23 @@ public final class ModuleMusubiClient {
         }
 
         if(!cachedRequest) {
-            future = future.thenApply(container -> {
-                debug(NECESSARY, "received null for uuid: %s, gameUuid: %s, gameName: %s", uuid, gameUuid, gameName);
-                if(container == null) return null;
-
-                debug(NECESSARY, "received container for %s > requesting tracking", container.identifier().uuid());
-                if(sendWaitingPacketBlocking(UserTrackingStatusPacket.DEFINITION, new UserTrackingStatusPacket(UUID.randomUUID(), container.identifier().uuid(), true))) {
-                    debug(NECESSARY, "tracking on %s approved > finished", container.identifier().uuid());
-                    return container;
+            future = future.thenCompose(container -> {
+                if(container == null) {
+                    debug(NECESSARY, "received null for uuid: %s, gameUuid: %s, gameName: %s", uuid, gameUuid, gameName);
+                    return CompletableFuture.completedFuture(null);
                 }
 
-                debug(NECESSARY, "failed to approve that tracking was received for %s", container.identifier().uuid());
+                debug(NECESSARY, "received container for %s > requesting tracking", container.identifier().uuid());
+                return sendWaitingPacket(UserTrackingStatusPacket.DEFINITION, new UserTrackingStatusPacket(UUID.randomUUID(), container.identifier().uuid(), true))
+                        .thenApply(success -> {
+                            if(success) {
+                                debug(NECESSARY, "tracking on %s approved > finished", container.identifier().uuid());
+                                return container;
+                            }
 
-                return null;
+                            debug(NECESSARY, "failed to approve that tracking was received for %s", container.identifier().uuid());
+                            return null;
+                        });
             });
         }
 
@@ -275,13 +318,19 @@ public final class ModuleMusubiClient {
     }
 
     private void debug(int level, String format, @Nullable Object... args) {
-
+        String message = String.format(format, args);
+        if(level == 1) LOGGER.warning(message);
+        else LOGGER.info(message);
     }
 
     void makeTemporary(UserContainer container) {
         UserContainer.Cached cached = userContainers.get(container.identifier().uuid());
         if(cached == null) return;
 
+        makeTemporary(cached);
+    }
+
+    void makeTemporary(UserContainer.Cached cached) {
         cached.timeout = DEFAULT_TIMEOUT;
         renewRemovalTask(cached);
     }

@@ -1,7 +1,7 @@
 {
   "key": "modoru:main",
   "version": "${version}",
-  "main": "modoru.main.MainModule",
+  "main": "fun.modoru.main.MainModule",
   "packages": [
     "modoru.main"
   ],

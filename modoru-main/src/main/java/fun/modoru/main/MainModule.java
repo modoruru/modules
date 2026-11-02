@@ -5,6 +5,7 @@ import fun.modoru.main.chat.ChatListener;
 import fun.modoru.main.chat.PrivateMessageCommands;
 import fun.modoru.main.chat.PrivateMessagesListener;
 import fun.modoru.main.musubi.ModuleMusubiClient;
+import fun.modoru.main.musubi.MusubiClientListener;
 import fun.modoru.main.pack.PackProcessor;
 import fun.modoru.main.pack.remote.PackRemote;
 import fun.modoru.main.player.cosmetics.ParticlesListener;
@@ -61,16 +62,19 @@ public final class MainModule extends Module {
         context.listeners().register(
                 new ParticlesListener(musubiClient),
                 new PrivateMessagesListener(),
-                new ChatListener(musubiClient, chat)
+                new ChatListener(musubiClient, chat),
+                new MusubiClientListener(musubiClient)
         );
         context.commands().registerCollection(PrivateMessageCommands.bootstrap(configuration, musubiClient));
 
+        musubiClient.startAsync();
         packRemote.performBlocking();
         proxyCommunication.load();
     }
 
     @Override
     public void disable() {
+        musubiClient.stop();
         packProcessor.unload(RESOURCEPACK_MODULE_KEY);
         proxyCommunication.unload();
     }
