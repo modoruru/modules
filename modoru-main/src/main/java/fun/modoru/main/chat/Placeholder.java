@@ -24,7 +24,7 @@ public record Placeholder<E>(String name, Function<E, Object> resolver) {
         }
     }
 
-    private static void replace(StringBuilder content, String substring, Supplier<Object> supplier) {
+    public static void replace(StringBuilder content, String substring, Supplier<Object> supplier) {
         final int substringLength = substring.length();
 
         String formatted = null;

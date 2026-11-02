@@ -15,13 +15,11 @@ public final class UsernameFormatter {
     private UsernameFormatter() {}
 
     public static CompletableFuture<@Nullable String> formatAsync(ModuleMusubiClient musubiClient, Player player) {
-        return musubiClient.getUserContainer(null, player.getUniqueId(), null, true, false)
+        return musubiClient.getUserContainer(player)
                 .thenApply(container -> format(player.getName(), container));
     }
 
-    public static @Nullable String format(String username, @Nullable UserContainer container) {
-        if(container == null) return null;
-
+    public static String format(String username, UserContainer container) {
         Integer firstColor = null, secondColor = null;
         NameColor currentColor = container.get(UserDefinition.currentNameColor);
 

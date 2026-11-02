@@ -1,5 +1,7 @@
 package fun.modoru.main;
 
+import fun.modoru.main.chat.Chat;
+import fun.modoru.main.chat.ChatListener;
 import fun.modoru.main.chat.PrivateMessageCommands;
 import fun.modoru.main.chat.PrivateMessagesListener;
 import fun.modoru.main.musubi.ModuleMusubiClient;
@@ -31,6 +33,8 @@ public final class MainModule extends Module {
     private PackRemote packRemote;
     private ProxyCommunication proxyCommunication;
 
+    private Chat chat;
+
     @Override
     public void setupCompatibility(CompatibilityLayer compatibilityLayer) {
         compatibilityLayer.addEnableHook(
@@ -52,9 +56,12 @@ public final class MainModule extends Module {
         packRemote = new PackRemote(configuration, executorService, packProcessor, folder().toFile());
         proxyCommunication = new ProxyCommunication(musubiClient, executorService);
 
+        chat = new Chat(configuration, musubiClient);
+
         context.listeners().register(
                 new ParticlesListener(musubiClient),
-                new PrivateMessagesListener()
+                new PrivateMessagesListener(),
+                new ChatListener(musubiClient, chat)
         );
         context.commands().registerCollection(PrivateMessageCommands.bootstrap(configuration, musubiClient));
 

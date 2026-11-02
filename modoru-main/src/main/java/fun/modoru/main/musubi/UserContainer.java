@@ -8,6 +8,7 @@ import fun.modoru.musubi.peer.MusubiConnection;
 import org.jspecify.annotations.Nullable;
 import su.hitori.api.util.UnsafeUtil;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledFuture;
 
 public final class UserContainer {
@@ -16,6 +17,8 @@ public final class UserContainer {
     private final MusubiConnection connection;
     final @Nullable Object[] values;
     boolean closed;
+
+    @Nullable CompletableFuture<@Nullable Long> discordIdHook;
 
     UserContainer(Identifier identifier, MusubiConnection connection) {
         this.identifier = identifier;
@@ -50,9 +53,9 @@ public final class UserContainer {
     /**
      * current value -> property default value -> argument default
      */
-    public <E> E getOrDefault(UserProperty<E> property, E defaultvalue) {
+    public <E> E getOrDefault(UserProperty<E> property, E defaultValue) {
         E value = get(property);
-        if(value == null) return defaultvalue;
+        if(value == null) return defaultValue;
         return value;
     }
 
@@ -65,7 +68,12 @@ public final class UserContainer {
         values[property.id()] = value;
     }
 
-    void setFlat(int propertyId, Object value) {
+    void setFlatWithHooks(int propertyId, Object value) {
+        if(propertyId == UserDefinition.discordId.id() && discordIdHook != null) {
+            discordIdHook.complete((Long) value);
+            discordIdHook = null;
+        }
+
         values[propertyId] = value;
     }
 

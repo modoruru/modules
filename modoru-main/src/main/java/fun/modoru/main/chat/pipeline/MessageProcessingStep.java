@@ -1,7 +1,7 @@
 package fun.modoru.main.chat.pipeline;
 
 import fun.modoru.main.musubi.UserContainer;
-import fun.modoru.musubi.builtin.data.user.ChatChannel;
+import fun.modoru.musubi.builtin.data.misc.ChatChannel;
 import org.bukkit.entity.Player;
 
 @FunctionalInterface

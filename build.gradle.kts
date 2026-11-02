@@ -15,6 +15,10 @@ allprojects {
             name = "modoruReleases"
         }
 
+        maven("https://repository.modoru.fun/snapshots") {
+            name = "modoruSnaphots"
+        }
+
         maven("https://jitpack.io") {
             name = "jitpack"
         }

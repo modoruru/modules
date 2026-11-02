@@ -3,6 +3,7 @@ package fun.modoru.main.musubi;
 import fun.modoru.main.MainConfiguration;
 import fun.modoru.musubi.BuiltInProtocol;
 import fun.modoru.musubi.Protocol;
+import fun.modoru.musubi.builtin.data.misc.ChatChannel;
 import fun.modoru.musubi.builtin.data.server.Group;
 import fun.modoru.musubi.builtin.data.user.Identifier;
 import fun.modoru.musubi.builtin.packets.WaitingPacket;
@@ -17,6 +18,7 @@ import io.netty.channel.MultiThreadIoEventLoopGroup;
 import io.netty.channel.nio.NioIoHandler;
 import io.netty.handler.codec.quic.QuicSslContextBuilder;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 import su.hitori.api.Pair;
 
@@ -37,7 +39,7 @@ public final class ModuleMusubiClient {
             VERBOSE = 0,
             NECESSARY = 1;
 
-    private static final long DEFAULT_TIMEOUT = 5_000;
+    public static final long DEFAULT_TIMEOUT = 5_000;
 
     private final MainConfiguration configuration;
     private final ScheduledExecutorService scheduledExecutorService;
@@ -117,7 +119,7 @@ public final class ModuleMusubiClient {
         else cached.removalTask = scheduledExecutorService.schedule(() -> close(cached), cached.timeout, TimeUnit.MILLISECONDS);
     }
 
-    private <T extends Record & WaitingPacket> CompletableFuture<Boolean> sendWaitingPacket(PacketDefinition<T> definition, T waitingPacket) {
+    public <T extends Record & WaitingPacket> CompletableFuture<Boolean> sendWaitingPacket(PacketDefinition<T> definition, T waitingPacket) {
         CompletableFuture<Boolean> future = new CompletableFuture<Boolean>().orTimeout(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS);
         assert musubiClient.clientConnection != null;
         musubiClient.clientConnection.send(definition, waitingPacket);
@@ -190,10 +192,28 @@ public final class ModuleMusubiClient {
         return Pair.of(request, false);
     }
 
-    public CompletableFuture<@Nullable UserContainer> getUserContainer(Player player) {
+    public void broadcastPlayerMessage(UUID senderUuid, long timeSent, ChatChannel chatChannel, String message) {
+        assert musubiClient.clientConnection != null;
+        musubiClient.clientConnection.send(
+                fun.modoru.musubi.builtin.packets.server.BroadcastPlayerMessagePacket.DEFINITION,
+                new fun.modoru.musubi.builtin.packets.server.BroadcastPlayerMessagePacket(senderUuid, timeSent, chatChannel, message)
+        );
+    }
+
+    public @Nullable UserContainer getUserContainerIfCached(Player player) {
+        UserContainer.Cached cached = userContainersFromGameUuid.get(player.getUniqueId());
+        if(cached == null) return null;
+
+        renewRemovalTask(cached);
+        return cached.container;
+    }
+
+    public CompletableFuture<UserContainer> getUserContainer(Player player) {
+        //noinspection NullableProblems - if such a container does not yet exist, the server must create a new container
         return getUserContainer(null, player.getUniqueId(), player.getName(), true, false);
     }
 
+    @Contract("null, !null, !null, true, _ -> !null")
     public CompletableFuture<@Nullable UserContainer> getUserContainer(@Nullable UUID uuid, @Nullable UUID gameUuid, @Nullable String gameName, boolean requestIfNotCached, boolean persistent) {
         UserContainer.Cached cached = null;
         if(uuid != null) cached = userContainers.get(uuid);
@@ -256,6 +276,14 @@ public final class ModuleMusubiClient {
 
     private void debug(int level, String format, @Nullable Object... args) {
 
+    }
+
+    void makeTemporary(UserContainer container) {
+        UserContainer.Cached cached = userContainers.get(container.identifier().uuid());
+        if(cached == null) return;
+
+        cached.timeout = DEFAULT_TIMEOUT;
+        renewRemovalTask(cached);
     }
 
     void close(UserContainer.Cached cached) {

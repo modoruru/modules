@@ -43,7 +43,7 @@ final class ClientPacketHandler {
     void trackingUpdateProperty(TrackingUpdatePropertyPacket packet) {
         UserContainer.Cached cached = client.userContainers.get(packet.identifier().uuid());
         if(cached == null) return;
-        cached.container.setFlat(packet.propertyId(), packet.propertyValue());
+        cached.container.setFlatWithHooks(packet.propertyId(), packet.propertyValue());
     }
 
     void completeIdentifier(CompleteIdentifierPacket packet) {

@@ -10,6 +10,9 @@ public final class MainConfiguration extends SectionScheme {
     public final PackRemote packRemote = new PackRemote();
 
     public static final class Chat extends SectionScheme {
+        public final Field<Boolean> broadcast = Field.create(true);
+        public final Field<Integer> localChannelRadius = Field.create(100);
+
         public final PrivateMessages privateMessages = new PrivateMessages();
 
         public static final class PrivateMessages extends SectionScheme {
