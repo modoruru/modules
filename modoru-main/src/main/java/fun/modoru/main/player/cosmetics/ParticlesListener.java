@@ -12,6 +12,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.potion.PotionEffectType;
 import su.hitori.api.util.SafeUtil;
@@ -31,14 +32,13 @@ public final class ParticlesListener implements Listener {
         this.tasks = new HashMap<>();
     }
 
-    /*
     @EventHandler
-    private void onAsyncPlayerSynchronization(AsyncPlayerSynchronizationEvent event) {
-        Player player = event.player();
+    private void onAsyncPlayerSynchronization(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
         if(tasks.containsKey(player)) return;
 
-        tasks.put(player, Task.runTaskTimerEntity(player, () -> tickPlayer(player, event.container()), 5L, 10L));
-    }*/
+        tasks.put(player, Task.runTaskTimerEntity(player, () -> tickPlayer(player), 5L, 10L));
+    }
 
     @EventHandler
     private void onPlayerQuit(PlayerQuitEvent event) {
@@ -46,7 +46,10 @@ public final class ParticlesListener implements Listener {
         if(task != null) task.cancel();
     }
 
-    private void tickPlayer(Player player, UserContainer container) {
+    private void tickPlayer(Player player) {
+        UserContainer container = musubiClient.getUserContainerIfCached(player);
+        if(container == null) return;
+
         if(player.getGameMode() == GameMode.SPECTATOR || player.getPotionEffect(PotionEffectType.INVISIBILITY) != null) return;
 
         Subscription subscription = container.get(UserDefinition.subscription);
@@ -63,7 +66,7 @@ public final class ParticlesListener implements Listener {
                 .offset(.3, .5, .3)
                 .location(location.add(0, 1.5, 0))
                 .receivers(player)
-                .extra(1)
+                .speed(1)
                 .count(gameData.count)
                 .spawn();
 

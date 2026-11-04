@@ -29,7 +29,7 @@ public final class ThemeUtil {
 
         int index;
         while ((index = content.indexOf(placeholder)) != -1) {
-            content.replace(index, index + replacement.length(), replacement);
+            content.replace(index, index + placeholder.length(), replacement);
         }
     }
 

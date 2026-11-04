@@ -1,9 +1,9 @@
 {
   "key": "modoru:survival",
   "version": "${version}",
-  "main": "modoru.survival.SurvivalModule",
+  "main": "fun.modoru.survival.SurvivalModule",
   "packages": [
-    "modoru.survival"
+    "fun.modoru.survival"
   ],
 
   "depends": {

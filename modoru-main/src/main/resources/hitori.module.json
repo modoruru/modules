@@ -3,7 +3,7 @@
   "version": "${version}",
   "main": "fun.modoru.main.MainModule",
   "packages": [
-    "modoru.main"
+    "fun.modoru.main"
   ],
 
   "depends": {

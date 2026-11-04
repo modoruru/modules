@@ -1,13 +1,23 @@
 package fun.modoru.main.musubi;
 
+import fun.modoru.main.chat.PrivateMessageCommands;
+import fun.modoru.main.chat.pipeline.ProcessedMessage;
+import fun.modoru.main.player.theme.Messages;
 import fun.modoru.musubi.builtin.data.user.Identifier;
 import fun.modoru.musubi.builtin.packets.client.*;
 import fun.modoru.musubi.packet.PacketHandler;
 import fun.modoru.musubi.packet.PacketProcessingException;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import su.hitori.api.Pair;
+import su.hitori.api.logging.LoggerFactory;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Logger;
 
 final class ClientPacketHandler {
+
+    private static final Logger LOGGER = LoggerFactory.instance().create();
 
     private final ModuleMusubiClient client;
 
@@ -71,7 +81,16 @@ final class ClientPacketHandler {
     }
 
     void broadcastPlayerMessage(BroadcastPlayerMessagePacket packet) {
-
+        client.mainModule.chat().sendProcessedMessage(
+                new ProcessedMessage(
+                        null,
+                        client.createAndCacheContainer(packet.senderIdentifier(), packet.senderPropertiesValues(), ModuleMusubiClient.CONTAINER_RETAIN_TIME),
+                        packet.timeSent(),
+                        packet.chatChannel(),
+                        packet.message()
+                ),
+                false
+        );
     }
 
     void userWarnings(UserWarningsPacket packet) {
@@ -79,11 +98,63 @@ final class ClientPacketHandler {
     }
 
     void transferPrivatePlayerMessage(TransferPrivatePlayerMessagePacket packet) {
+        Player receiverPlayer = Bukkit.getPlayer(packet.receiverIdentifier().gameUuid());
+        UserContainer receiverContainer;
+        if(receiverPlayer == null || (receiverContainer = client.getUserContainerIfCached(receiverPlayer)) == null) {
+            client.clientConnection().send(fun.modoru.musubi.builtin.packets.server.TransferPrivatePlayerMessageResponsePacket.DEFINITION, new fun.modoru.musubi.builtin.packets.server.TransferPrivatePlayerMessageResponsePacket(
+                    packet.requestUuid(),
+                    false
+            ));
+            return;
+        }
 
+        client.clientConnection().send(fun.modoru.musubi.builtin.packets.server.TransferPrivatePlayerMessageResponsePacket.DEFINITION, new fun.modoru.musubi.builtin.packets.server.TransferPrivatePlayerMessageResponsePacket(
+                packet.requestUuid(),
+                true
+        ));
+
+        PrivateMessageCommands.sendPrivateMessageLocally(
+                null,
+                client.createAndCacheContainer(packet.senderIdentifier(), packet.senderPropertiesValues(), ModuleMusubiClient.CONTAINER_RETAIN_TIME),
+                receiverPlayer,
+                receiverContainer,
+                packet.message(),
+                Pair.of(packet.senderClient(), packet.creationTime())
+        );
     }
 
     void transferPrivatePlayerMessageResponse(TransferPrivatePlayerMessageResponsePacket packet) {
+        TransferPrivatePlayerMessageRequest request = client.transferPrivatePlayerMessageRequests.remove(packet.requestUuid());
+        if(request == null) return;
 
+        Player senderPlayer = Bukkit.getPlayer(request.senderIdentifier().gameUuid());
+        UserContainer senderContainer;
+        if(senderPlayer == null || (senderContainer = client.getUserContainerIfCached(senderPlayer)) == null) return;
+
+        if(!packet.success()) {
+            Messages.ERROR.sendTranslatable(senderPlayer, senderContainer, "modoru.misc.error.no_such_player", request.receiverGameName());
+            return;
+        }
+
+        Identifier receiverIdentifier = packet.receiverIdentifier();
+        assert receiverIdentifier != null;
+
+        UserContainer.Cached cached = client.userContainers.get(receiverIdentifier.uuid());
+        UserContainer receiverContainer;
+        if(cached == null) receiverContainer = client.createAndCacheContainer(receiverIdentifier, packet.receiverPropertiesValues(), ModuleMusubiClient.CONTAINER_RETAIN_TIME);
+        else {
+            receiverContainer = cached.container;
+            client.renewRemovalTask(cached);
+        }
+
+        PrivateMessageCommands.sendPrivateMessageLocally(
+                senderPlayer,
+                senderContainer,
+                null,
+                receiverContainer,
+                request.content(),
+                null
+        );
     }
 
     void confirmation(ConfirmationPacket packet) {

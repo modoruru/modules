@@ -6,7 +6,10 @@ import fun.modoru.survival.mechanics.misc.CropsListener;
 import fun.modoru.survival.mechanics.misc.PhantomSpawnListener;
 import fun.modoru.survival.mechanics.misc.WardenDropListener;
 import fun.modoru.survival.mechanics.misc.WelcomeMessageListener;
+import fun.modoru.survival.mechanics.recipe.RecipesBootstrap;
+import fun.modoru.survival.mechanics.recipe.RecipesListener;
 import net.kyori.adventure.key.Key;
+import org.bukkit.Bukkit;
 import su.hitori.api.configuration.ConfigurationSource;
 import su.hitori.api.configuration.serializer.YAMLSerializer;
 import su.hitori.api.module.Module;
@@ -33,12 +36,14 @@ public final class SurvivalModule extends Module {
                 new WardenDropListener(configuration),
                 new CropsListener(),
                 new WelcomeMessageListener(),
-                new PhantomSpawnListener()
+                new PhantomSpawnListener(),
+                new RecipesListener()
         );
 
         if(configuration.miscellaneous.welcomeMessageEnabled.get())
             context.listeners().register(new WelcomeMessageListener());
 
+        RecipesBootstrap.bootstrap(Bukkit::addRecipe);
         uniqueItems.readFromFile();
     }
 

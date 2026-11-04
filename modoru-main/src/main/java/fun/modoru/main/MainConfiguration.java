@@ -12,16 +12,6 @@ public final class MainConfiguration extends SectionScheme {
     public static final class Chat extends SectionScheme {
         public final Field<Boolean> broadcast = Field.create(true);
         public final Field<Integer> localChannelRadius = Field.create(100);
-
-        public final PrivateMessages privateMessages = new PrivateMessages();
-
-        public static final class PrivateMessages extends SectionScheme {
-            public final Field<String>
-                    remoteReceiverFormat = Field.create("<color:#479dff><hover:show_text:\"<lang:modoru.main.remote_message_hover:'<aqua>%original_client%':'%delay%'>\">ℹ</hover> [%sender_name% » I]:</color> <white><click:suggest_command:'/tell %sender_name% '>%message%</white>"),
-                    receiverFormat = Field.create("<color:#479dff>[%sender_name% » I]:</color> <white><click:suggest_command:'/tell %sender_name% '>%message%</white>"),
-                    senderFormat = Field.create("<color:#47ff8e>[I » %receiver_name%]:</color> <white><click:suggest_command:'/tell %receiver_name% '>%message%</white>"),
-                    noRecentMessage = Field.create("<lang:modoru.main.no_recent_message>");
-        }
     }
 
     public static final class MusubiClient extends SectionScheme {

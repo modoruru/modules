@@ -52,7 +52,7 @@ public final class MainModule extends Module {
                 ConfigurationSource.file(YAMLSerializer.INSTANCE, defaultConfig())
         ));
 
-        musubiClient = new ModuleMusubiClient(folder().toFile(), configuration, executorService);
+        musubiClient = new ModuleMusubiClient(this, configuration, executorService);
         packProcessor = new PackProcessor(this);
         packRemote = new PackRemote(configuration, executorService, packProcessor, folder().toFile());
         proxyCommunication = new ProxyCommunication(musubiClient, executorService);
@@ -77,6 +77,10 @@ public final class MainModule extends Module {
         musubiClient.stop();
         packProcessor.unload(RESOURCEPACK_MODULE_KEY);
         proxyCommunication.unload();
+    }
+
+    public Chat chat() {
+        return chat;
     }
 
 }

@@ -3,6 +3,7 @@ package fun.modoru.main.musubi;
 import com.destroystokyo.paper.profile.PlayerProfile;
 import fun.modoru.musubi.builtin.data.UserDefinition;
 import fun.modoru.musubi.builtin.packets.server.CreateDiscordLinkCodePacket;
+import fun.modoru.musubi.builtin.packets.server.PlayerOnlineStatusPacket;
 import io.papermc.paper.connection.PlayerConfigurationConnection;
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.event.connection.configuration.AsyncPlayerConnectionConfigureEvent;
@@ -97,7 +98,11 @@ public final class MusubiClientListener implements Listener {
         showStatusDialog(connection, CHECKING_USER_DATA);
 
         Long discordId = container.get(UserDefinition.discordId);
-        if(discordId != null) return null;
+        PlayerOnlineStatusPacket playerOnlineStatusPacket = new PlayerOnlineStatusPacket(container.identifier().uuid(), true);
+        if(discordId != null) {
+            musubiClient.clientConnection().send(PlayerOnlineStatusPacket.DEFINITION, playerOnlineStatusPacket);
+            return null;
+        }
 
         // Step 3. Discord is not connected - creating new code for linking an account
         StringBuilder codeBuilder = new StringBuilder();
@@ -156,6 +161,11 @@ public final class MusubiClientListener implements Listener {
             return INTERNAL_PROBLEM;
         }
 
+        // Step 6. Update last-known name
+        container.set(UserDefinition.lastKnownUsername, profile.getName());
+
+        musubiClient.clientConnection().send(PlayerOnlineStatusPacket.DEFINITION, playerOnlineStatusPacket);
+
         return null;
     }
 
@@ -177,7 +187,10 @@ public final class MusubiClientListener implements Listener {
     @EventHandler
     private void onPlayerQuit(PlayerQuitEvent event) {
         UserContainer.Cached container = musubiClient.userContainersFromGameUuid.get(event.getPlayer().getUniqueId());
-        if(container != null) musubiClient.makeTemporary(container);
+        if(container != null) {
+            musubiClient.makeTemporary(container);
+            musubiClient.clientConnection().send(PlayerOnlineStatusPacket.DEFINITION, new PlayerOnlineStatusPacket(container.container.identifier().uuid(), false));
+        }
     }
 
 }

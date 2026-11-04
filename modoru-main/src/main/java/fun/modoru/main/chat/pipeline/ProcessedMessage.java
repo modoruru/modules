@@ -5,5 +5,5 @@ import fun.modoru.musubi.builtin.data.misc.ChatChannel;
 import org.bukkit.entity.Player;
 import org.jspecify.annotations.Nullable;
 
-public record ProcessedMessage(@Nullable Player senderPlayer, UserContainer senderContainer, long timeSent, ChatChannel chatChannel, String originalContent, String processedContent) {
+public record ProcessedMessage(@Nullable Player senderPlayer, UserContainer senderContainer, long timeSent, ChatChannel chatChannel, String processedContent) {
 }

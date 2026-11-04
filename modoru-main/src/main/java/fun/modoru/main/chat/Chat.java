@@ -34,9 +34,9 @@ public final class Chat {
     private static final String URL_FORMAT = "%s<click:open_url:'%s'><hover:show_text:'%s'><<accent_color>><underlined>%s</underlined></click>%s";
 
     private static final String
-            GLOBAL_FORMAT = String.format("<color:%s>| %%sender_name%% »</color> <white>%%message%%</white>", ThemeUtil.ACCENT_COLOR_PLACEHOLDER),
-            LOCAL_FORMAT = "<color:gray>| %sender_name% ›</color> <white>%message%</white>",
-            GROUP_FORMAT = String.format("<color:%s>| %%sender_name%% ›››</color> <white>%%message%%</white>", ThemeUtil.IMPORTANT_COLOR_PLACEHOLDER);
+            GLOBAL_FORMAT = String.format("<color:%s>| <white>%%sender_name%%</white> »</color> <white>%%message%%</white>", ThemeUtil.ACCENT_COLOR_PLACEHOLDER),
+            LOCAL_FORMAT = "<color:gray>| <white>%sender_name%</white> ›</color> <white>%message%</white>",
+            GROUP_FORMAT = String.format("<color:%s>| <white>%%sender_name%%</white> ›››</color> <white>%%message%%</white>", ThemeUtil.IMPORTANT_COLOR_PLACEHOLDER);
 
     private static final Set<Replacement> REPLACEMENTS = Set.of(
             new Replacement(
@@ -188,7 +188,7 @@ public final class Chat {
                 return null;
         }
 
-        return new ProcessedMessage(senderPlayer, senderContainer, timeSent, chatChannel, originalContent, content.toString());
+        return new ProcessedMessage(senderPlayer, senderContainer, timeSent, chatChannel, content.toString());
     }
 
     public void sendProcessedMessage(ProcessedMessage processedMessage, boolean sendToOtherClients) {
@@ -261,7 +261,7 @@ public final class Chat {
 
         // todo: remove from receivers everyone who ignores the sender
 
-        if(senderPlayer != null && processedMessage.chatChannel() != ChatChannel.LOCAL && sendToOtherClients) {
+        if(senderPlayer != null && processedMessage.chatChannel() != ChatChannel.LOCAL && configuration.chat.broadcast.get() && sendToOtherClients) {
             musubiClient.broadcastPlayerMessage(senderContainer.identifier().uuid(), processedMessage.timeSent(), processedMessage.chatChannel(), processedMessage.processedContent());
         }
 
@@ -297,7 +297,11 @@ public final class Chat {
             Messages.ALL.send(
                     receiverPlayer,
                     receiverContainer,
-                    content.toString()
+                    (switch (processedMessage.chatChannel()) {
+                        case GLOBAL -> GLOBAL_FORMAT;
+                        case LOCAL -> LOCAL_FORMAT;
+                        case GROUP -> GROUP_FORMAT;
+                    })
                             .replace("%sender_name%", UsernameFormatter.format(senderUsername, senderContainer))
                             .replace("%message%", content.toString())
             );
