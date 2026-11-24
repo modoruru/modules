@@ -7,7 +7,7 @@ dependencies {
 
     implementation("fun.lofe:stop-spying-on-your-players-messages:1.0.0+26.3")
 
-    implementation("io.netty:netty-codec-native-quic:4.2.19.Final")
+    // implementation("io.netty:netty-codec-native-quic:4.2.19.Final")
     implementation("fun.modoru:musubi:${property("musubi_version")}")
 }
 

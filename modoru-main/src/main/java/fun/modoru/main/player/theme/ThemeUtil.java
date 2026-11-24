@@ -14,13 +14,13 @@ public final class ThemeUtil {
     public static String apply(String content, Theme theme) {
         return content
                 .replace(ACCENT_COLOR_PLACEHOLDER, '#' + Integer.toHexString(theme.accentColor()))
-                .replace(IMPORTANT_COLOR_PLACEHOLDER, '#' + Integer.toHexString(theme.warningsColor()))
+                .replace(IMPORTANT_COLOR_PLACEHOLDER, '#' + Integer.toHexString(theme.importantColor()))
                 .replace(ERRORS_COLOR_PLACEHOLDER, '#' + Integer.toHexString(theme.errorsColor()));
     }
 
     public static void apply(StringBuilder content, Theme theme) {
         applyForSingleColor(content, ACCENT_COLOR_PLACEHOLDER, theme.accentColor());
-        applyForSingleColor(content, IMPORTANT_COLOR_PLACEHOLDER, theme.warningsColor());
+        applyForSingleColor(content, IMPORTANT_COLOR_PLACEHOLDER, theme.importantColor());
         applyForSingleColor(content, ERRORS_COLOR_PLACEHOLDER, theme.errorsColor());
     }
 

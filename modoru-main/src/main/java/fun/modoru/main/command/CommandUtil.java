@@ -1,5 +1,6 @@
 package fun.modoru.main.command;
 
+import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -35,6 +36,10 @@ public final class CommandUtil {
         }
 
         return result;
+    }
+
+    public static Player senderAsPlayer(CommandContext<CommandSourceStack> context) {
+        return (Player) context.getSource().getSender();
     }
 
 }

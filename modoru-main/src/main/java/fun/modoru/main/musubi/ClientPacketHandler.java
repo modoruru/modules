@@ -2,6 +2,7 @@ package fun.modoru.main.musubi;
 
 import fun.modoru.main.chat.PrivateMessageCommands;
 import fun.modoru.main.chat.pipeline.ProcessedMessage;
+import fun.modoru.main.musubi.misc.TransferPrivatePlayerMessageRequest;
 import fun.modoru.main.player.theme.Messages;
 import fun.modoru.musubi.builtin.data.user.Identifier;
 import fun.modoru.musubi.builtin.packets.client.*;
@@ -9,6 +10,7 @@ import fun.modoru.musubi.packet.PacketHandler;
 import fun.modoru.musubi.packet.PacketProcessingException;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.jspecify.annotations.Nullable;
 import su.hitori.api.Pair;
 import su.hitori.api.logging.LoggerFactory;
 
@@ -168,6 +170,18 @@ final class ClientPacketHandler {
 
     void trackingUpdateGroup(TrackingUpdateGroupPacket packet) {
 
+    }
+
+    void userPunishments(UserPunishmentsPacket packet) {
+
+    }
+
+    void allowJoin(AllowJoinPacket packet) {
+        CompletableFuture<@Nullable String> future = client.allowJoinRequests.remove(packet.requestUuid());
+        if(future == null) return;
+
+        if(!packet.allow()) future.complete(packet.disallowMessage() == null ? "" : packet.disallowMessage());
+        else future.complete(null);
     }
 
 }

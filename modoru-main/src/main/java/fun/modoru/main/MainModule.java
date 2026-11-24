@@ -9,6 +9,7 @@ import fun.modoru.main.musubi.MusubiClientListener;
 import fun.modoru.main.pack.PackProcessor;
 import fun.modoru.main.pack.remote.PackRemote;
 import fun.modoru.main.player.cosmetics.ParticlesListener;
+import fun.modoru.main.player.tool.WhoAmICommand;
 import fun.modoru.main.proxy.ProxyCommunication;
 import net.kyori.adventure.key.Key;
 import su.hitori.api.configuration.ConfigurationSource;
@@ -65,7 +66,10 @@ public final class MainModule extends Module {
                 new ChatListener(musubiClient, chat),
                 new MusubiClientListener(musubiClient)
         );
-        context.commands().registerCollection(PrivateMessageCommands.bootstrap(configuration, musubiClient));
+        //noinspection unchecked
+        context.commands()
+                .register(WhoAmICommand.bootstrap(musubiClient))
+                .registerCollection(PrivateMessageCommands.bootstrap(configuration, musubiClient));
 
         musubiClient.startAsync();
         packRemote.performBlocking();

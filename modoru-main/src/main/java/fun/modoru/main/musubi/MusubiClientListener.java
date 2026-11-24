@@ -100,6 +100,13 @@ public final class MusubiClientListener implements Listener {
         Long discordId = container.get(UserDefinition.discordId);
         PlayerOnlineStatusPacket playerOnlineStatusPacket = new PlayerOnlineStatusPacket(container.identifier().uuid(), true);
         if(discordId != null) {
+            // request approval that user is allowed to join the server
+            String disallowMessage = musubiClient.sendAllowJoinRequest(container.identifier().uuid()).join();
+            if(disallowMessage != null) {
+                musubiClient.makeTemporary(container);
+                return Text.create(disallowMessage);
+            }
+
             musubiClient.clientConnection().send(PlayerOnlineStatusPacket.DEFINITION, playerOnlineStatusPacket);
             return null;
         }
@@ -159,6 +166,13 @@ public final class MusubiClientListener implements Listener {
         if(discordId == null) {
             musubiClient.makeTemporary(container);
             return INTERNAL_PROBLEM;
+        }
+
+        // request approval that user is allowed to join the server
+        String disallowMessage = musubiClient.sendAllowJoinRequest(container.identifier().uuid()).join();
+        if(disallowMessage != null) {
+            musubiClient.makeTemporary(container);
+            return Text.create(disallowMessage);
         }
 
         // Step 6. Update last-known name

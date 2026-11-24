@@ -2,6 +2,8 @@ package fun.modoru.main.musubi;
 
 import fun.modoru.main.MainConfiguration;
 import fun.modoru.main.MainModule;
+import fun.modoru.main.musubi.misc.TransferPrivatePlayerMessageRequest;
+import fun.modoru.main.util.UuidUtil;
 import fun.modoru.musubi.BuiltInProtocol;
 import fun.modoru.musubi.Protocol;
 import fun.modoru.musubi.builtin.data.misc.ChatChannel;
@@ -9,10 +11,9 @@ import fun.modoru.musubi.builtin.data.server.Group;
 import fun.modoru.musubi.builtin.data.user.Identifier;
 import fun.modoru.musubi.builtin.packets.WaitingPacket;
 import fun.modoru.musubi.builtin.packets.client.*;
-import fun.modoru.musubi.builtin.packets.server.RequestCompleteIdentifierPacket;
-import fun.modoru.musubi.builtin.packets.server.RequestUserDataPacket;
-import fun.modoru.musubi.builtin.packets.server.TransferPrivatePlayerMessageRequestPacket;
-import fun.modoru.musubi.builtin.packets.server.UserTrackingStatusPacket;
+import fun.modoru.musubi.builtin.packets.client.BroadcastPlayerMessagePacket;
+import fun.modoru.musubi.builtin.packets.client.TransferPrivatePlayerMessageResponsePacket;
+import fun.modoru.musubi.builtin.packets.server.*;
 import fun.modoru.musubi.client.ClientConnection;
 import fun.modoru.musubi.client.CloseReason;
 import fun.modoru.musubi.client.MusubiClient;
@@ -63,12 +64,12 @@ public final class ModuleMusubiClient {
             completeIdentifierFromGameUuidRequests;
     final Map<String, Request.CompleteIdentifierRequest> completeIdentifierFromGameNameRequests;
     final Map<UUID, Request.UserWarningsRequest> userWarningsRequests;
+    final Map<UUID, TransferPrivatePlayerMessageRequest> transferPrivatePlayerMessageRequests;
+    final Map<UUID, CompletableFuture<@Nullable String>> allowJoinRequests;
 
     final Map<UUID, CompletableFuture<Boolean>> waitingPackets;
 
     final Map<UUID, UserContainer.Cached> userContainers, userContainersFromGameUuid;
-
-    final Map<UUID, TransferPrivatePlayerMessageRequest> transferPrivatePlayerMessageRequests;
 
     public ModuleMusubiClient(MainModule mainModule, MainConfiguration configuration, ScheduledExecutorService scheduledExecutorService) {
         this.mainModule = mainModule;
@@ -88,6 +89,8 @@ public final class ModuleMusubiClient {
                 .defineHandler(ConfirmationPacket.DEFINITION, prepare(handler::confirmation))
                 .defineHandler(GroupPacket.DEFINITION, prepare(handler::group))
                 .defineHandler(TrackingUpdateGroupPacket.DEFINITION, prepare(handler::trackingUpdateGroup))
+                .defineHandler(UserPunishmentsPacket.DEFINITION, prepare(handler::userPunishments))
+                .defineHandler(AllowJoinPacket.DEFINITION, prepare(handler::allowJoin))
                 .build();
 
         File tlsFolder = new File(mainModule.folder().toFile(), "tls/");
@@ -121,13 +124,13 @@ public final class ModuleMusubiClient {
         this.completeIdentifierFromGameUuidRequests = new ConcurrentHashMap<>();
         this.completeIdentifierFromGameNameRequests = new ConcurrentHashMap<>();
         this.userWarningsRequests = new ConcurrentHashMap<>();
+        this.transferPrivatePlayerMessageRequests = new ConcurrentHashMap<>();
+        this.allowJoinRequests = new ConcurrentHashMap<>();
 
         this.waitingPackets = new ConcurrentHashMap<>();
 
         this.userContainers = new ConcurrentHashMap<>();
         this.userContainersFromGameUuid = new ConcurrentHashMap<>();
-
-        this.transferPrivatePlayerMessageRequests = new ConcurrentHashMap<>();
     }
 
     public void startAsync() {
@@ -176,6 +179,17 @@ public final class ModuleMusubiClient {
         return clientConnection;
     }
 
+    public CompletableFuture<@Nullable String> sendAllowJoinRequest(UUID uuid) {
+        CompletableFuture<@Nullable String> future = new CompletableFuture<>();
+        future.orTimeout(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS);
+
+        UUID requestUuid = UuidUtil.randomUuid();
+        clientConnection().send(AllowJoinRequestPacket.DEFINITION, new AllowJoinRequestPacket(requestUuid, uuid));
+
+        allowJoinRequests.put(requestUuid, future);
+        return future;
+    }
+
     public <T extends Record & WaitingPacket> CompletableFuture<Boolean> sendWaitingPacket(PacketDefinition<T> definition, T waitingPacket) {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         future.orTimeout(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS);
@@ -207,7 +221,7 @@ public final class ModuleMusubiClient {
         else request = completeIdentifierFromGameNameRequests.get(gameName);
         if(request != null) return Pair.of(request, true);
 
-        UUID requestUuid = UUID.randomUUID();
+        UUID requestUuid = UuidUtil.randomUuid();
         request = new Request.CompleteIdentifierRequest(requestUuid, new CompletableFuture<>(), uuid, gameUuid);
         request.future().orTimeout(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS);
         clientConnection().send(RequestCompleteIdentifierPacket.DEFINITION, new RequestCompleteIdentifierPacket(requestUuid, uuid, gameUuid, gameName));
@@ -227,7 +241,7 @@ public final class ModuleMusubiClient {
         Request.UserDataRequest request = userDataRequests.get(uuid);
         if(request != null) return Pair.of(request, true);
 
-        UUID requestUuid = UUID.randomUUID();
+        UUID requestUuid = UuidUtil.randomUuid();
         request = new Request.UserDataRequest(requestUuid, new CompletableFuture<>(), uuid, containerTimeout);
         request.future().orTimeout(DEFAULT_TIMEOUT * 2, TimeUnit.MILLISECONDS);
         clientConnection().send(RequestUserDataPacket.DEFINITION, new RequestUserDataPacket(requestUuid, uuid));
@@ -303,7 +317,7 @@ public final class ModuleMusubiClient {
                 }
 
                 debug(NECESSARY, "received container for %s > requesting tracking", container.identifier().uuid());
-                return sendWaitingPacket(UserTrackingStatusPacket.DEFINITION, new UserTrackingStatusPacket(UUID.randomUUID(), container.identifier().uuid(), true))
+                return sendWaitingPacket(UserTrackingStatusPacket.DEFINITION, new UserTrackingStatusPacket(UuidUtil.randomUuid(), container.identifier().uuid(), true))
                         .thenApply(success -> {
                             if(success) {
                                 debug(NECESSARY, "tracking on %s approved > finished", container.identifier().uuid());
@@ -324,7 +338,7 @@ public final class ModuleMusubiClient {
     }
 
     public void sendTransferPrivateMessage(Identifier senderIdentifier, String receiverGameName, String message) {
-        UUID requestUuid = UUID.randomUUID();
+        UUID requestUuid = UuidUtil.randomUuid();
         transferPrivatePlayerMessageRequests.put(requestUuid, new TransferPrivatePlayerMessageRequest(
                 senderIdentifier, receiverGameName, message
         ));
@@ -365,7 +379,7 @@ public final class ModuleMusubiClient {
         userContainersFromGameUuid.remove(identifier.gameUuid());
 
         if(musubiClient.connected())
-            sendWaitingPacket(UserTrackingStatusPacket.DEFINITION, new UserTrackingStatusPacket(UUID.randomUUID(), identifier.uuid(), false));
+            sendWaitingPacket(UserTrackingStatusPacket.DEFINITION, new UserTrackingStatusPacket(UuidUtil.randomUuid(), identifier.uuid(), false));
     }
 
 }

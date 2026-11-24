@@ -1,4 +1,4 @@
-package fun.modoru.main.musubi;
+package fun.modoru.main.musubi.misc;
 
 import fun.modoru.musubi.builtin.data.user.Identifier;
 
