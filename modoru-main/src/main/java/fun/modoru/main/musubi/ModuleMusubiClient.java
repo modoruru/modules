@@ -9,6 +9,7 @@ import fun.modoru.musubi.Protocol;
 import fun.modoru.musubi.builtin.data.misc.ChatChannel;
 import fun.modoru.musubi.builtin.data.server.Group;
 import fun.modoru.musubi.builtin.data.user.Identifier;
+import fun.modoru.musubi.builtin.data.user.Punishment;
 import fun.modoru.musubi.builtin.packets.WaitingPacket;
 import fun.modoru.musubi.builtin.packets.client.*;
 import fun.modoru.musubi.builtin.packets.client.BroadcastPlayerMessagePacket;
@@ -66,6 +67,7 @@ public final class ModuleMusubiClient {
     final Map<UUID, Request.UserWarningsRequest> userWarningsRequests;
     final Map<UUID, TransferPrivatePlayerMessageRequest> transferPrivatePlayerMessageRequests;
     final Map<UUID, CompletableFuture<@Nullable String>> allowJoinRequests;
+    final Map<UUID, CompletableFuture<Map<Punishment.Type, Punishment>>> punishmentsRequests;
 
     final Map<UUID, CompletableFuture<Boolean>> waitingPackets;
 
@@ -126,6 +128,7 @@ public final class ModuleMusubiClient {
         this.userWarningsRequests = new ConcurrentHashMap<>();
         this.transferPrivatePlayerMessageRequests = new ConcurrentHashMap<>();
         this.allowJoinRequests = new ConcurrentHashMap<>();
+        this.punishmentsRequests = new ConcurrentHashMap<>();
 
         this.waitingPackets = new ConcurrentHashMap<>();
 
@@ -179,6 +182,18 @@ public final class ModuleMusubiClient {
         return clientConnection;
     }
 
+    CompletableFuture<Map<Punishment.Type, Punishment>> requestPunishments(UUID uuid) {
+        CompletableFuture<Map<Punishment.Type, Punishment>> future = new CompletableFuture<>();
+        future.orTimeout(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS);
+
+        UUID requestUuid = UuidUtil.randomUuid();
+        clientConnection().send(RequestUserPunishmentsPacket.DEFINITION, new RequestUserPunishmentsPacket(requestUuid, uuid));
+
+        future.thenRun(() -> punishmentsRequests.remove(requestUuid));
+        punishmentsRequests.put(requestUuid, future);
+        return future;
+    }
+
     public CompletableFuture<@Nullable String> sendAllowJoinRequest(UUID uuid) {
         CompletableFuture<@Nullable String> future = new CompletableFuture<>();
         future.orTimeout(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS);
@@ -199,7 +214,7 @@ public final class ModuleMusubiClient {
     }
 
     UserContainer createAndCacheContainer(Identifier identifier, Object[] propertiesValues, long timeout) {
-        UserContainer container = new UserContainer(identifier, clientConnection());
+        UserContainer container = new UserContainer(identifier, this);
         System.arraycopy(propertiesValues, 0, container.values, 0, container.values.length);
 
         UserContainer.Cached cached = new UserContainer.Cached(container, timeout);

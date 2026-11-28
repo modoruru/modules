@@ -1,10 +1,10 @@
 package fun.modoru.main.player.tool;
 
 import com.mojang.brigadier.tree.LiteralCommandNode;
-import fun.modoru.main.command.CommandUtil;
 import fun.modoru.main.musubi.ModuleMusubiClient;
 import fun.modoru.main.player.theme.Messages;
 import fun.modoru.main.player.theme.ThemeUtil;
+import fun.modoru.main.util.command.CommandUtil;
 import fun.modoru.musubi.builtin.data.UserDefinition;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;

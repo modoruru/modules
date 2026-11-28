@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
-public final class GithubResolver {
+final class GithubResolver {
 
     private static final String API_ENDPOINT = "https://api.github.com";
 

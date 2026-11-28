@@ -2,27 +2,35 @@ package fun.modoru.main.musubi;
 
 import fun.modoru.musubi.builtin.data.UserDefinition;
 import fun.modoru.musubi.builtin.data.UserProperty;
+import fun.modoru.musubi.builtin.data.server.Warning;
 import fun.modoru.musubi.builtin.data.user.Identifier;
+import fun.modoru.musubi.builtin.data.user.Punishment;
 import fun.modoru.musubi.builtin.packets.server.PushUserPropertyPacket;
-import fun.modoru.musubi.peer.MusubiConnection;
 import org.jspecify.annotations.Nullable;
 import su.hitori.api.util.UnsafeUtil;
 
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledFuture;
 
 public final class UserContainer {
 
     private final Identifier identifier;
-    private final MusubiConnection connection;
+    private final ModuleMusubiClient musubiClient;
     final @Nullable Object[] values;
     boolean closed;
 
     @Nullable CompletableFuture<@Nullable Long> discordIdHook;
 
-    UserContainer(Identifier identifier, MusubiConnection connection) {
+    @Nullable List<Warning> localWarnings;
+    @Nullable Map<Punishment.Type, Punishment> localPunishments;
+
+    @Nullable CompletableFuture<Map<Punishment.Type, Punishment>> punishmentsRequest;
+
+    UserContainer(Identifier identifier, ModuleMusubiClient musubiClient) {
         this.identifier = identifier;
-        this.connection = connection;
+        this.musubiClient = musubiClient;
         this.values = new Object[UserDefinition.length()];
     }
 
@@ -37,6 +45,17 @@ public final class UserContainer {
     private void verifyProperty(UserProperty<?> property) {
         if(property != UserDefinition.byId(property.id()))
             throw new IllegalArgumentException();
+    }
+
+    public CompletableFuture<@Nullable Punishment> getPunishment(Punishment.Type type) {
+        if(localPunishments != null) return CompletableFuture.completedFuture(localPunishments.get(type));
+        if(punishmentsRequest != null) return punishmentsRequest.thenApply(map -> map.get(type));
+
+        punishmentsRequest = musubiClient.requestPunishments(identifier.uuid());
+        return punishmentsRequest.thenApply(punishments -> {
+            localPunishments = punishments;
+            return punishments.get(type);
+        });
     }
 
     public <E> @Nullable E get(UserProperty<E> property) {
@@ -64,7 +83,7 @@ public final class UserContainer {
 
         verifyProperty(property);
 
-        connection.send(PushUserPropertyPacket.DEFINITION, new PushUserPropertyPacket(identifier.uuid(), property.id(), value));
+        musubiClient.clientConnection().send(PushUserPropertyPacket.DEFINITION, new PushUserPropertyPacket(identifier.uuid(), property.id(), value));
         values[property.id()] = value;
     }
 

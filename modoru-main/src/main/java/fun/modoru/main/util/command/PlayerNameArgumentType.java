@@ -1,4 +1,4 @@
-package fun.modoru.main.command;
+package fun.modoru.main.util.command;
 
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.arguments.ArgumentType;

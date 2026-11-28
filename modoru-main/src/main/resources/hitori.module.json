@@ -3,7 +3,8 @@
   "version": "${version}",
   "main": "fun.modoru.main.MainModule",
   "packages": [
-    "fun.modoru.main"
+    "fun.modoru.main",
+    "fun.lofe.ssoypm"
   ],
 
   "depends": {

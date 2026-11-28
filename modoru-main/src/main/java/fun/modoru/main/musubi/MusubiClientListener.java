@@ -2,6 +2,8 @@ package fun.modoru.main.musubi;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import fun.modoru.musubi.builtin.data.UserDefinition;
+import fun.modoru.musubi.builtin.data.misc.Length;
+import fun.modoru.musubi.builtin.data.user.Punishment;
 import fun.modoru.musubi.builtin.packets.server.CreateDiscordLinkCodePacket;
 import fun.modoru.musubi.builtin.packets.server.PlayerOnlineStatusPacket;
 import io.papermc.paper.connection.PlayerConfigurationConnection;
@@ -24,6 +26,9 @@ import su.hitori.api.logging.LoggerFactory;
 import su.hitori.api.util.LoggerUtil;
 import su.hitori.api.util.Text;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -32,6 +37,7 @@ import java.util.logging.Logger;
 
 public final class MusubiClientListener implements Listener {
 
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("HH:mm dd.MM.yyyy (z)");
     private static final Logger LOGGER = LoggerFactory.instance().create();
 
     private static final Component
@@ -96,6 +102,28 @@ public final class MusubiClientListener implements Listener {
         }
 
         showStatusDialog(connection, CHECKING_USER_DATA);
+
+        Punishment ban = container.getPunishment(Punishment.Type.BAN).join();
+        if(ban != null && ban.active()) {
+            musubiClient.makeTemporary(container);
+
+            StringBuilder builder = new StringBuilder("\nYour account is ");
+            Length length = ban.length();
+            if(length.isFinite()) {
+                builder.append("<color:red><u>disabled</color> until <b>").append(
+                        Instant.ofEpochMilli(ban.creationTime() + length.length())
+                                .atZone(ZoneId.systemDefault())
+                                .format(DATE_FORMAT)
+                ).append("</b>.");
+            }
+            else builder.append("<b>permanently</b> <color:red><u>disabled</color>.");
+            builder.append("\n\n");
+
+            builder.append("-- Reason --\n<italic>\"").append(ban.reason()).append("\"</italic>\n\n");
+            builder.append("<color:dark_gray>uuid: ").append(container.identifier().uuid()).append("</color>");
+
+            return Text.create(builder.toString());
+        }
 
         Long discordId = container.get(UserDefinition.discordId);
         PlayerOnlineStatusPacket playerOnlineStatusPacket = new PlayerOnlineStatusPacket(container.identifier().uuid(), true);

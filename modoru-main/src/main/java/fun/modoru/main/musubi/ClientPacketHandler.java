@@ -14,6 +14,7 @@ import org.jspecify.annotations.Nullable;
 import su.hitori.api.Pair;
 import su.hitori.api.logging.LoggerFactory;
 
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
@@ -69,7 +70,11 @@ final class ClientPacketHandler {
 
     void requestFailed(RequestFailedPacket packet) {
         Request<?> request = client.allRequests.remove(packet.requestUuid());
-        if(request == null) return; // may be dangerous
+        if(request == null) {
+            var future = client.punishmentsRequests.remove(packet.requestUuid());
+            if(future != null) future.complete(Map.of());
+            return;
+        }
         request.future().complete(null);
 
         switch (request) {
@@ -173,7 +178,12 @@ final class ClientPacketHandler {
     }
 
     void userPunishments(UserPunishmentsPacket packet) {
+        UserContainer.Cached cached = client.userContainers.get(packet.uuid());
+        if(cached == null) return;
 
+        var request = cached.container.punishmentsRequest;
+        if(request == null) return;
+        request.complete(packet.punishments());
     }
 
     void allowJoin(AllowJoinPacket packet) {

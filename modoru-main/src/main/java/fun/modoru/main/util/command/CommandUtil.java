@@ -1,4 +1,4 @@
-package fun.modoru.main.command;
+package fun.modoru.main.util.command;
 
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
